@@ -1,0 +1,10 @@
+{
+  "classes": ["glioma", "meningioma", "pituitario", "no_tumor"],
+  "num_classes": 4,
+  "label_to_index": {
+    "glioma": 0,
+    "meningioma": 1,
+    "pituitario": 2,
+    "no_tumor": 3
+  }
+}

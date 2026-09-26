@@ -1,0 +1,53 @@
+model: shufflenetv2
+timm_name: shufflenet_v2_x1_0
+pretrained: true
+role: candidato
+
+input:
+  size: 256
+  layout: NCHW
+  channels: 3
+
+normalization:
+  mode: tanh
+  mean: [0.5, 0.5, 0.5]
+  std: [0.5, 0.5, 0.5]
+
+augmentation:
+  rotation_range: 20
+  zoom_range: 0.15
+  horizontal_flip: 0.5
+  brightness_range: [0.85, 1.15]
+
+head:
+  dropout: 0.3
+  units: 128
+  activation: relu
+
+training:
+  loss: cross_entropy
+  batch_size: 32
+  epochs: 30
+  optimizer: adamw
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  scheduler: cosine
+  early_stopping_patience: 7
+
+transfer:
+  freeze_backbone: true
+  unfreeze_from_epoch: 15
+
+validation:
+  strategy: kfold
+  k_folds: 5
+  stratified: true
+  seed: 42
+
+gradcam:
+  target_layer: features[-1]
+  method: gradcam
+
+export:
+  formats: [keras, tflite, onnx]
+  quantization: float16

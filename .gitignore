@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Entorno
+.env
+backend/.env
+
+# Base de datos
+*.sqlite3
+backend/db.sqlite3
+
+# Artefactos del backend
+backend/media/*
+!backend/media/.gitkeep
+
+# Datasets crudos (descargados, no versionados)
+ml/dataset/raw/
+ml/dataset/processed/
+ml/dataset/*.zip
+*.csv
+
+# Pesos de modelos y artefactos binarios grandes
+ml/models/**/*.pt
+ml/models/**/*.pth
+ml/models/**/*.keras
+ml/models/**/*.h5
+ml/models/**/*.onnx
+ml/models/**/*.tflite
+ml/models/**/*.npz
+ml/evaluation/reports/*.png
+ml/evaluation/reports/*.json
+
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+*.iml
+.flutter-plugins
+.flutter-plugins-dependencies
+frontend/android/local.properties
+frontend/android/.gradle/
+frontend/android/app/debug/
+frontend/android/app/profile/
+frontend/android/app/release/
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/Flutter.framework
+frontend/ios/Flutter/Flutter.podspec
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
