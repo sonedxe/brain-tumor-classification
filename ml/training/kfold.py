@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
 from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import Subset
+
+_ML_DIR = Path(__file__).resolve().parents[1]
+for _candidate in (_ML_DIR, _ML_DIR / "training", _ML_DIR / "dataset", _ML_DIR / "evaluation"):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
 
 from dataloader import build_datasets
 from dataset.preprocessing import load_classes, load_config
@@ -27,6 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model", required=True)
     parser.add_argument("--folds", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--data-root", type=Path, default=None,
+                        help="processed/ alternativo (por defecto ml/dataset/processed)")
     return parser.parse_args()
 
 
@@ -36,9 +44,9 @@ def build_folds(dataset, n_splits: int, seed: int) -> list[tuple[list[int], list
     return list(splitter.split(np.zeros(len(targets)), targets))
 
 
-def run(model_name: str, n_splits: int, seed: int) -> dict:
+def run(model_name: str, n_splits: int, seed: int, root: Path | None = None) -> dict:
     config = load_config(model_name)
-    train_ds, _, _ = build_datasets(model_name)
+    train_ds, _, _ = build_datasets(model_name, root=root)
     splits = build_folds(train_ds, n_splits, seed)
 
     print(f"[{model_name}] {len(train_ds)} imagenes, {n_splits} folds estratificados")
@@ -82,7 +90,7 @@ def main() -> None:
         raise NotImplementedError("La validacion no estratificada no esta contemplada")
 
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    manifest = run(args.model, n_splits, seed)
+    manifest = run(args.model, n_splits, seed, root=args.data_root)
     (REPORTS_DIR / f"{args.model}_folds.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )

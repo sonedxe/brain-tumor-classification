@@ -19,10 +19,10 @@ augmentation:
   horizontal_flip: 0.5
   brightness_range: [0.85, 1.15]
 
+# Head: clasificador por defecto de timm con num_classes=4 y este dropout.
+# (train.py solo consume `dropout`; no hay capa oculta configurable.)
 head:
   dropout: 0.3
-  units: 128
-  activation: relu
 
 training:
   loss: cross_entropy

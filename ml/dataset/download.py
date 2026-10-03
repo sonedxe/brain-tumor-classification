@@ -22,7 +22,11 @@ DATASETS = {
 }
 
 SUBTYPE_TO_CLASS = {
+    # Nombres canonicos (p. ej. saeedi2023 ya trae estas 4 carpetas): identidad.
     "glioma": "glioma",
+    "meningioma": "meningioma",
+    "pituitario": "pituitario",
+    "no_tumor": "no_tumor",
     "glioma_tumor": "glioma",
     "glioma_a": "glioma",
     "glioma_b": "glioma",

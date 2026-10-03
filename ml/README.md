@@ -31,3 +31,16 @@ Las imagenes son datos medicos. No redistribuirlas en este repositorio ni
 identificar a los sujetos de las muestras. El modelo se evaluara sobre
 conjuntos de prueba y reportara metricas agregadas, nunca predicciones
 vinculadas a un paciente.
+
+## Entrenamiento (handoff RTX 5070)
+
+Guia completa para la maquina de entrenamiento: `docs/ml-training-handoff.md`.
+Resumen de comandos (desde la raiz del repositorio):
+
+```bash
+python ml/smoke_test.py                                   # validacion sin GPU
+python ml/dataset/prepare.py --source <raw> --dest ml/dataset/processed
+python ml/training/train.py --model mobilenetv3 --preset ml/configs/experiments/initial.yaml --device cuda
+python ml/training/run_all.py --preset ml/configs/experiments/initial.yaml --device cuda
+python ml/evaluation/metrics.py --model mobilenetv3 --weights ml/models/mobilenetv3/best.pt
+```

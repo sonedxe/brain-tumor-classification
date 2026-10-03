@@ -1,8 +1,23 @@
-"""Construccion de los dataloaders."""
+"""Construccion de los dataloaders sobre la particion compartida.
+
+Los cinco modelos usan exactamente los mismos splits fisicos, generados una
+sola vez con `ml/dataset/prepare.py`:
+
+    ml/dataset/processed/{train,val,test}/<clase>/*.png
+
+No se duplica el dataset por modelo: el nombre del modelo solo selecciona los
+transforms (normalizacion especifica) de su YAML.
+"""
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+_ML_DIR = Path(__file__).resolve().parents[1]
+for _candidate in (_ML_DIR, _ML_DIR / "training", _ML_DIR / "dataset", _ML_DIR / "evaluation"):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
 
 import torch
 from torch.utils.data import DataLoader, Dataset
@@ -11,11 +26,8 @@ from torchvision.datasets import ImageFolder
 from augmentation import build_train_transform, build_val_transform
 from dataset.preprocessing import load_classes, load_config
 
-RAW_DIR = Path(__file__).resolve().parents[1] / "dataset" / "raw"
-
-
-def resolve_split_dir(model_name: str, split: str) -> Path:
-    return RAW_DIR / model_name / "processed" / split
+PROCESSED_DIR = Path(__file__).resolve().parents[1] / "dataset" / "processed"
+SPLITS = ("train", "val", "test")
 
 
 def assert_classes_match(dataset_root: Path) -> None:
@@ -34,8 +46,13 @@ def assert_classes_match(dataset_root: Path) -> None:
 
 
 def build_datasets(model_name: str, root: Path | None = None) -> tuple[Dataset, Dataset, Dataset]:
+    """Tres splits COMPARTIDOS por los cinco modelos.
+
+    `root` es ml/dataset/processed (o un directorio temporal en pruebas).
+    `model_name` solo elige los transforms de ml/configs/<modelo>.yaml.
+    """
     config = load_config(model_name)
-    base = root or resolve_split_dir(model_name, "")
+    base = root or PROCESSED_DIR
     train_root = base / "train"
     val_root = base / "val"
     test_root = base / "test"
@@ -43,16 +60,36 @@ def build_datasets(model_name: str, root: Path | None = None) -> tuple[Dataset, 
     for split_root in (train_root, val_root, test_root):
         assert_classes_match(split_root)
 
-    train_ds = ImageFolder(train_root, transform=build_train_transform(model_name))
-    val_ds = ImageFolder(val_root, transform=build_val_transform(model_name))
-    test_ds = ImageFolder(test_root, transform=build_val_transform(model_name))
+    train_ds = CanonicalLabels(ImageFolder(train_root, transform=build_train_transform(model_name)))
+    val_ds = CanonicalLabels(ImageFolder(val_root, transform=build_val_transform(model_name)))
+    test_ds = CanonicalLabels(ImageFolder(test_root, transform=build_val_transform(model_name)))
 
-    assert train_ds.classes == load_classes(), (
-        f"Orden de clases del dataset {train_ds.classes} "
-        f"difiere de labels.json {load_classes()}"
-    )
     assert config["input"]["channels"] == 3
     return train_ds, val_ds, test_ds
+
+
+class CanonicalLabels(Dataset):
+    """Remapea los indices de ImageFolder al orden de labels.json.
+
+    ImageFolder ordena alfabeticamente (glioma, meningioma, no_tumor,
+    pituitario), pero labels.json —contrato compartido con backend y
+    frontend— define (glioma, meningioma, pituitario, no_tumor). Sin este
+    remapeo, entrenar con las etiquetas permutadas en silencio.
+    """
+
+    def __init__(self, base: ImageFolder) -> None:
+        self.base = base
+        canonical = load_classes()
+        self.classes: list[str] = list(canonical)
+        self.target_mapping: list[int] = [canonical.index(c) for c in base.classes]
+        self.targets: list[int] = [self.target_mapping[t] for t in base.targets]
+
+    def __len__(self) -> int:
+        return len(self.base)
+
+    def __getitem__(self, index: int):
+        image, target = self.base[index]
+        return image, self.target_mapping[target]
 
 
 def build_dataloaders(

@@ -1,0 +1,50 @@
+# Preset del experimento inicial: comparativa de los cinco modelos.
+#
+# Uso:
+#   python ml/dataset/prepare.py --source ml/dataset/raw/saeedi2023 \
+#       --dest ml/dataset/processed          # ratios y seed de aqui abajo
+#   python ml/training/train.py --model mobilenetv3 --preset ml/configs/experiments/initial.yaml
+#   python ml/training/run_all.py --preset ml/configs/experiments/initial.yaml
+#
+# Precedencia: CLI > preset > YAML del modelo. El preset solo centraliza lo
+# comun; la arquitectura, normalizacion, transfer y target layer de Grad-CAM
+# siguen viviendo en ml/configs/<modelo>.yaml.
+
+experiment: initial
+version: v1
+
+dataset:
+  name: saeedi2023  # alternativa documentada: nickparvar2024 (requiere --flatten mental: ver prepare.py)
+  processed: ml/dataset/processed
+  splits:
+    train: 0.70
+    val: 0.15
+    test: 0.15
+  seed: 42
+
+models:
+  - mobilenetv3
+  - efficientnetb0
+  - shufflenetv2
+  - resnet18
+  - densenet121
+
+input:
+  size: 256  # informativo: el valor efectivo lo define cada ml/configs/<modelo>.yaml
+
+training:
+  batch_size: 32
+  epochs: 30
+  optimizer: adamw
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  scheduler: cosine
+  early_stopping_patience: 7
+
+validation:
+  strategy: kfold
+  k_folds: 5
+  stratified: true
+
+seed: 42
+device: auto  # auto | cpu | cuda  (cuda para la RTX 5070: --device cuda)

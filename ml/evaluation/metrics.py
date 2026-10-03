@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -21,6 +22,11 @@ from sklearn.metrics import (
     recall_score,
 )
 from torch.utils.data import DataLoader
+
+_ML_DIR = Path(__file__).resolve().parents[1]
+for _candidate in (_ML_DIR, _ML_DIR / "training", _ML_DIR / "dataset", _ML_DIR / "evaluation"):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
 
 from dataset.preprocessing import load_classes
 
@@ -109,6 +115,18 @@ def format_confusion_matrix(matrix: np.ndarray, classes: list[str]) -> str:
     return "\n".join(lines)
 
 
+def count_parameters(model: torch.nn.Module) -> tuple[int, int]:
+    """Devuelve (totales, entrenables). Para docs/tabla-comparativa.md."""
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total, trainable
+
+
+def checkpoint_size_mb(path: Path) -> float:
+    """Tamano aproximado del modelo en disco, en MB."""
+    return path.stat().st_size / (1024 * 1024)
+
+
 def save_report(model_name: str, metrics: dict, extra: dict | None = None) -> Path:
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     payload = {"model": model_name, "classes": load_classes(), **metrics, **(extra or {})}
@@ -122,6 +140,8 @@ def main() -> None:
     parser.add_argument("--model", required=True)
     parser.add_argument("--weights", type=Path, required=True)
     parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--data-root", type=Path, default=None,
+                        help="processed/ alternativo (por defecto ml/dataset/processed)")
     args = parser.parse_args()
 
     from dataloader import build_dataloaders
@@ -138,17 +158,30 @@ def main() -> None:
     model.load_state_dict(checkpoint["state_dict"])
     model.to(device)
 
-    _, _, test_loader = build_dataloaders(args.model, batch_size=args.batch_size)
+    _, _, test_loader = build_dataloaders(args.model, root=args.data_root, batch_size=args.batch_size)
     y_true, y_pred, _ = predict_all(model, test_loader, device)
     metrics = compute_metrics(y_true, y_pred, classes)
     ms_per_image = measure_inference_time(model, test_loader, device)
+    total_params, trainable_params = count_parameters(model)
 
-    path = save_report(args.model, metrics, {"ms_per_image": ms_per_image})
+    extra = {
+        "ms_per_image": ms_per_image,
+        "num_parameters": total_params,
+        "trainable_parameters": trainable_params,
+        "num_parameters_m": round(total_params / 1e6, 3),
+        "checkpoint_mb": round(checkpoint_size_mb(args.weights), 3),
+        "input_size": checkpoint.get("input_size"),
+        "normalization": checkpoint.get("normalization"),
+        "best_val_accuracy": checkpoint.get("val_accuracy"),
+    }
+    path = save_report(args.model, metrics, extra)
     print(f"accuracy      = {metrics['accuracy']:.4f}")
     print(f"macro F1      = {metrics['macro_f1']:.4f}")
     print(f"weighted F1   = {metrics['weighted_f1']:.4f}")
     print(f"tumor recall  = {metrics['tumor_recall']:.4f}")
     print(f"ms/imagen     = {ms_per_image:.2f}")
+    print(f"parametros    = {total_params} ({total_params / 1e6:.2f}M)")
+    print(f"checkpoint    = {extra['checkpoint_mb']:.2f} MB")
     print(format_confusion_matrix(np.array(metrics["confusion_matrix"]), classes))
     print(f"reporte: {path}")
 

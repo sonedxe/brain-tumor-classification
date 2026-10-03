@@ -67,19 +67,39 @@ comparacion queda con cuatro modelos optimizados y una referencia.
 
 La capa objetivo de Grad-CAM no es la misma en las cinco arquitecturas, y
 equivocarse produce un mapa de calor vacio o ruido. El valor esta en
-`gradcam_target_layer` dentro de cada YAML de `ml/configs/`, y
-`ml/evaluation/gradcam.py` incluye un resolver que busca la ultima capa
-convolucional cuando el valor no se especifica.
+`gradcam.target_layer` dentro de cada YAML de `ml/configs/`,
+`ml/evaluation/gradcam.py` resuelve `nombre`, `nombre[indice]` e indices
+sueltos, y busca la ultima capa convolucional cuando el valor no se especifica.
 
-| Modelo | Capa objetivo |
-| --- | --- |
-| MobileNetV3 | `features[-1]` |
-| EfficientNetB0 | `features[-1]` |
-| ShuffleNetV2 | `features[-1]` |
-| DenseNet121 | `features[-1]` |
-| ResNet18 | `layer4[-1]` |
+| Modelo | Capa objetivo | Nota |
+| --- | --- | --- |
+| MobileNetV3 | `conv_head` | timm no expone `features` en esta arquitectura |
+| EfficientNetB0 | `conv_head` | idem |
+| ShuffleNetV2 | `conv5` | modulo torchvision (ver seccion 7) |
+| DenseNet121 | `features.denseblock4` | `features[-1]` seria norm5, que no convoluciona |
+| ResNet18 | `layer4[-1]` | ultimo bloque residual |
 
-## 5. Base de datos SQLite
+## 5. ShuffleNetV2 se construye con torchvision, no con timm
+
+**Estado:** timm 1.x no incluye ningun modelo ShuffleNet (verificado en 0.9.16 y
+1.0.9: cero coincidencias en el registro). El `timm_name: shufflenet_v2_x1_0` del
+YAML habria abortado el entrenamiento con `Unknown model`.
+
+**Decision tomada:** `ml/configs/shufflenetv2.yaml` declara `source: torchvision`
+y `ml/training/train.py::build_model` lo construye con
+`torchvision.models.shufflenet_v2_x1_0(weights=IMAGENET1K_V1)`, reemplazando su
+`fc` por `Dropout(0.3) + Linear(..., 4)`. Esquema freeze hasta la epoca 15 y
+fine-tuning posterior identicos a los otros cuatro. La premisa de transfer
+learning con pesos ImageNet se mantiene.
+
+**Acciones sobre el manuscripto:**
+
+- Donde diga "los cinco modelos usan timm", precisar que ShuffleNetV2 usa
+  torchvision con pesos ImageNet equivalentes.
+- Mantener la fila de ShuffleNetV2 en todas las tablas: la comparacion sigue
+  siendo homogenea (mismos splits, mismo head de 4 clases, mismo protocolo).
+
+## 6. Base de datos SQLite
 
 El paper no especifica tecnologia de persistencia. El repositorio usa SQLite
 mediante SQLAlchemy, y la tabla `prediction_logs` registra
@@ -89,7 +109,7 @@ El campo `model_version` no es decorativo: permite reconstruir que modelo
 produjo cada resultado, que es un requisito de reproducibilidad y no solo de
 trazabilidad de la app.
 
-## 6. Que NO se guarda
+## 7. Que NO se guarda
 
 Por tratarse de datos medicos, la app no persiste informacion identificable del
 paciente: ni nombre, ni fecha de nacimiento, ni los tags DICOM de la imagen, ni

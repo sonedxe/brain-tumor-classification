@@ -2,6 +2,7 @@
 
 Uso:
     python train.py --model mobilenetv3
+    python train.py --model mobilenetv3 --preset ../configs/experiments/initial.yaml --device cuda
     python train.py --model resnet18 --fold 0
 """
 
@@ -9,6 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
+import sys
 import time
 from pathlib import Path
 
@@ -17,6 +20,11 @@ import torch
 import torch.nn as nn
 import yaml
 from torch.utils.data import DataLoader
+
+_ML_DIR = Path(__file__).resolve().parents[1]
+for _candidate in (_ML_DIR, _ML_DIR / "training", _ML_DIR / "dataset", _ML_DIR / "evaluation"):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
 
 from dataloader import build_dataloaders, class_distribution
 from dataset.preprocessing import load_classes, load_config
@@ -33,7 +41,66 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "mps", "cuda"])
+    parser.add_argument("--data-root", type=Path, default=None,
+                        help="processed/ alternativo (por defecto ml/dataset/processed)")
+    parser.add_argument("--preset", type=Path, default=None,
+                        help="YAML de experimento (p. ej. ml/configs/experiments/initial.yaml)")
+    parser.add_argument("--seed", type=int, default=None,
+                        help="Sobrescribe el seed del preset/YAML")
     return parser.parse_args()
+
+
+def set_seed(seed: int) -> None:
+    """Fija el seed global para repetir el experimento."""
+    import numpy as np
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def load_preset(path: Path | None) -> dict:
+    if path is None:
+        return {}
+    with path.open(encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def apply_preset(config: dict, preset: dict, args: argparse.Namespace) -> int:
+    """El preset centraliza lo comun; el YAML del modelo conserva arquitectura,
+    normalizacion, transfer y Grad-CAM. Precedencia: CLI > preset > YAML."""
+    training = preset.get("training", {})
+    for key in ("batch_size", "epochs", "optimizer", "learning_rate",
+                "weight_decay", "scheduler", "early_stopping_patience"):
+        if key in training:
+            config["training"][key] = training[key]
+    seed = args.seed if args.seed is not None else preset.get("seed", 42)
+    return int(seed)
+
+
+def write_metadata(dest: Path, model_name: str, config: dict, classes: list[str],
+                   version: str, best_accuracy: float, epoch: int) -> Path:
+    """Contrato del artefacto que eventualmente consumira backend.
+
+    ml/models/<modelo>/best.pt + metadata.json con lo minimo para inferir:
+    arquitectura timm, clases, tamano de entrada y normalizacion exacta.
+    """
+    norm = config["normalization"]
+    path = dest / "metadata.json"
+    path.write_text(json.dumps({
+        "model": model_name,
+        "version": version,
+        "timm_name": config["timm_name"],
+        "classes": classes,
+        "num_classes": len(classes),
+        "input_size": config["input"]["size"],
+        "normalization": {"mode": norm["mode"], "mean": norm["mean"], "std": norm["std"]},
+        "best_val_accuracy": best_accuracy,
+        "epoch": epoch,
+    }, indent=2), encoding="utf-8")
+    return path
 
 
 def resolve_device(choice: str) -> torch.device:
@@ -47,18 +114,47 @@ def resolve_device(choice: str) -> torch.device:
 
 
 def build_model(config: dict, num_classes: int) -> nn.Module:
-    model = timm.create_model(
+    """Construye el modelo con pesos ImageNet y head de 4 clases.
+
+    Fuente `timm` (4 modelos) o `torchvision` (ShuffleNetV2: timm 1.x no lo
+    incluye; torchvision si ofrece `shufflenet_v2_x1_0` con pesos
+    IMAGENET1K_V1, decision documentada en docs/notas-correccion-paper.md).
+    """
+    if config.get("source", "timm") == "torchvision":
+        import torchvision
+
+        factory = getattr(torchvision.models, config["timm_name"])
+        weights = config.get("torchvision_weights", "IMAGENET1K_V1") if config["pretrained"] else None
+        model = factory(weights=weights)
+        in_features = model.fc.in_features
+        model.fc = nn.Sequential(
+            nn.Dropout(p=config["head"]["dropout"]),
+            nn.Linear(in_features, num_classes),
+        )
+        return model
+    return timm.create_model(
         config["timm_name"],
         pretrained=config["pretrained"],
         num_classes=num_classes,
         drop_rate=config["head"]["dropout"],
     )
-    return model
 
 
 def freeze_backbone(model: nn.Module, freeze: bool) -> None:
+    """Congela el backbone pero mantiene entrenable el clasificador.
+
+    Sin la segunda parte, el optimizador recibiria una lista de parametros
+    vacia y el entrenamiento abortaria (ValueError de AdamW).
+    """
     for param in model.parameters():
         param.requires_grad = not freeze
+    if freeze:
+        if hasattr(model, "get_classifier"):
+            head = model.get_classifier()
+        else:  # torchvision (ShuffleNetV2): head reemplazado en build_model
+            head = model.fc
+        for param in head.parameters():
+            param.requires_grad = True
 
 
 def build_criterion(config: dict) -> nn.Module:
@@ -133,6 +229,10 @@ def output_dir(model_name: str, fold: int | None) -> Path:
 def main() -> None:
     args = parse_args()
     config = load_config(args.model)
+    preset = load_preset(args.preset)
+    seed = apply_preset(config, preset, args)
+    set_seed(seed)
+    version = f"{args.model}-{preset.get('version', 'v1')}"
     if args.epochs:
         config["training"]["epochs"] = args.epochs
 
@@ -141,7 +241,7 @@ def main() -> None:
     dest = output_dir(args.model, args.fold)
 
     train_loader, val_loader, _ = build_dataloaders(
-        args.model, batch_size=args.batch_size
+        args.model, root=args.data_root, batch_size=args.batch_size
     )
     print(f"[{args.model}] clases={classes}")
     print(f"[{args.model}] distribucion train={class_distribution(train_loader.dataset)}")
@@ -202,6 +302,7 @@ def main() -> None:
                 },
                 dest / "best.pt",
             )
+            write_metadata(dest, args.model, config, classes, version, best_accuracy, epoch)
         else:
             epochs_without_gain += 1
             if epochs_without_gain >= patience:
@@ -212,6 +313,9 @@ def main() -> None:
         json.dumps(
             {
                 "model": args.model,
+                "version": version,
+                "seed": seed,
+                "preset": str(args.preset) if args.preset else None,
                 "role": config["role"],
                 "fold": args.fold,
                 "normalization": config["normalization"]["mode"],
@@ -224,6 +328,7 @@ def main() -> None:
     )
     print(f"[{args.model}] mejor exactitud de validacion: {best_accuracy:.4f}")
     print(f"[{args.model}] pesos guardados en {dest / 'best.pt'}")
+    print(f"[{args.model}] metadatos para backend en {dest / 'metadata.json'}")
 
 
 if __name__ == "__main__":

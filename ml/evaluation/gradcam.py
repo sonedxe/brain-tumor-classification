@@ -13,6 +13,8 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import re
+import sys
 from pathlib import Path
 
 import cv2
@@ -23,21 +25,39 @@ from PIL import Image
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
+_ML_DIR = Path(__file__).resolve().parents[1]
+for _candidate in (_ML_DIR, _ML_DIR / "training", _ML_DIR / "dataset", _ML_DIR / "evaluation"):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
+
 from augmentation import build_val_transform
 from dataset.preprocessing import load_classes, load_config
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+_SEGMENT = re.compile(r"^([A-Za-z_]\w*)(?:\[(-?\d+)\])?$")
+
+
 def resolve_target_layers(model: nn.Module, spec: str | None) -> list[nn.Module]:
-    """Resuelve gradcam_target_layer del YAML a un modulo real del modelo."""
+    """Resuelve gradcam_target_layer del YAML a un modulo real del modelo.
+
+    Acepta `features[-1]`, `layer4[-1]` y `conv5`: cada segmento puede ser un
+    atributo, un indice (`-1`) o un atributo indexado.
+    """
     if spec:
-        layers: list[nn.Module] = []
         current: nn.Module = model
         for part in spec.split("."):
-            current = current[int(part)] if part.lstrip("-").isdigit() else getattr(current, part)
-        layers.append(current)
-        return layers
+            if part.lstrip("-").isdigit():
+                current = current[int(part)]
+                continue
+            match = _SEGMENT.match(part)
+            if match is None:
+                raise ValueError(f"Segmento de capa no valido: {part!r} (spec {spec!r})")
+            current = getattr(current, match.group(1))
+            if match.group(2) is not None:
+                current = current[int(match.group(2))]
+        return [current]
 
     last_conv: list[nn.Module] = []
     for module in model.modules():
