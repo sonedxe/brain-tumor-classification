@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../../core/config.dart';
+import '../models/history_entry.dart';
 import '../models/prediction_model.dart';
 
 /// Error de dominio, ya normalizado para que la vista lo muestre en espanol.
@@ -89,6 +90,39 @@ class ApiService {
       return false;
     } on TimeoutException {
       return false;
+    }
+  }
+
+  /// `GET /history` — ultimas predicciones registradas por el backend.
+  Future<List<HistoryEntry>> fetchHistory({int limit = 20}) async {
+    try {
+      final uri = _endpoint('history').replace(
+        queryParameters: {'limit': '$limit'},
+      );
+      final response = await _client.get(uri).timeout(AppConfig.requestTimeout);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+        if (decoded is List) {
+          return decoded
+              .whereType<Map<String, dynamic>>()
+              .map(HistoryEntry.fromJson)
+              .toList();
+        }
+        throw const ApiException('El historial no es una lista JSON');
+      }
+
+      throw ApiException(
+        _extractDetail(response) ?? 'Error ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
+    } on SocketException {
+      throw const ApiException(
+        'No hay conexion con el servidor. Verifica que el backend este '
+        'corriendo y que API_BASE_URL apunte a el.',
+      );
+    } on TimeoutException {
+      throw const ApiException('El servidor tardo demasiado en responder');
     }
   }
 

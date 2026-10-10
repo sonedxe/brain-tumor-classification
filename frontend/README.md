@@ -1,17 +1,46 @@
-# brain_tumor_classification
+# App Flutter — Clasificación de tumores cerebrales
 
-Clasificacion de tumores cerebrales en imagenes de MRI
+Cliente móvil con arquitectura **MVVM** que consume la API del backend.
 
-## Getting Started
+## Arquitectura
 
-This project is a starting point for a Flutter application.
+```
+lib/
+├── core/            # config (URL de la API) y tema
+├── data/
+│   ├── models/      # DTOs (PredictionModel, HistoryEntry)
+│   ├── repositories/# une modelo + servicio
+│   └── services/    # ApiService y AuthService (único punto HTTP)
+├── viewmodels/      # estado + reglas (Prediction, History, Auth)
+├── views/           # pantallas (Analizar, Historial, Info, Cuenta)
+└── widgets/         # componentes de presentación reutilizables
+```
 
-A few resources to get you started if this is your first Flutter project:
+Regla de oro: **ninguna vista hace HTTP, parsea JSON ni lee archivos**. La
+vista observa el ViewModel y emite intents; el ViewModel usa un repository
+inyectable, lo que permite probarlo con un `MockClient`.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## Pantallas consolidadas
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+`AppShell` reúne cuatro pantallas con un `NavigationBar` y `IndexedStack`:
+Analizar, Historial, Info y Cuenta. Ver `docs/diseno-pantallas.md` en la raíz.
+
+## Ejecutar
+
+```bash
+flutter pub get
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
+```
+
+`10.0.2.2` es el alias del host desde el emulador de Android. En iOS Simulator
+usar `http://localhost:8000/api/v1`; en dispositivo físico, la IP local.
+
+## Pruebas
+
+```bash
+flutter analyze
+flutter test
+```
+
+Las pruebas cubren el parseo de los DTOs, el contrato de `ApiService` y la
+lógica de los ViewModels con un `MockClient` de `package:http/testing`.

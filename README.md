@@ -44,6 +44,8 @@ a un sujeto.
 | `backend/` | API FastAPI, inferencia, persistencia SQLite |
 | `frontend/` | App Flutter con arquitectura MVVM |
 | `docs/` | Paper, tesis, notas de corrección y tabla comparativa |
+| `docs/scrum/` | Metodología Scrum: backlog, sprints y Definition of Done |
+| `docs/paper_laccei/` | Avance del artículo científico (formato LACCEI) |
 
 ## Clases
 
@@ -78,8 +80,11 @@ field: file
 ```
 
 Otros endpoints: `GET /api/v1/health` (verifica que el modelo esté cargado) y
-`GET /api/v1/history` (historial de predicciones). Documentación interactiva
-en `/docs` cuando el servidor está corriendo.
+`GET /api/v1/history` (historial de predicciones). La cuenta es opcional y hoy
+opera en modo mock: `POST /api/v1/auth/register` y `POST /api/v1/auth/login`
+devuelven `{ access_token, token_type, name, email, mock }`, que es lo que
+consume el `AuthViewModel`. Documentación interactiva en `/docs` cuando el
+servidor está corriendo.
 
 ## Puesta en marcha
 
@@ -122,8 +127,26 @@ máquina.
 
 ## Documentación
 
+- `docs/informe-universitario.md` — informe universitario completo del proyecto.
+- `docs/scrum/` — aplicación de Scrum: roles, ceremonias, product backlog,
+  historial de sprints y Definition of Done.
+- `docs/diseno-pantallas.md` — las cuatro pantallas consolidadas y su
+  correspondencia con MVVM.
+- `docs/paper_laccei/avance-paper.md` — avance del artículo científico (LACCEI).
+- `docs/ml-training-handoff.md` — guía para entrenar los cinco modelos.
 - `docs/notas-correccion-paper.md` — desviaciones entre el repositorio y el
   manuscripto, y qué línea del paper corresponde a cada una.
 - `docs/tabla-comparativa.md` — formato de la tabla de resultados del OE2.
 - `docs/flujograma.md` — fases del proyecto y su correspondencia con los
   objetivos específicos.
+
+## Estado actual (nivel de madurez)
+
+- **Frontend (MVVM):** capas `models`, `repositories`, `services`, `viewmodels`
+  y `views`; cuatro pantallas consolidadas y consumo de `predict`, `history` y
+  `auth` desde Flutter. El único punto que conoce la URL es `ApiService`.
+- **Backend:** contrato estable (`predict`, `history`, `health`, `auth`) con
+  `MOCK_INFERENCE=true` por defecto.
+- **ML:** el pipeline comparativo está listo; los pesos reales los aporta el
+  compañero de entrenamiento. La integración de inferencia es el único punto
+  que queda en mock.

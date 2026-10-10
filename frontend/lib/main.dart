@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme.dart';
+import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/history_viewmodel.dart';
 import 'viewmodels/prediction_viewmodel.dart';
-import 'views/home_view.dart';
+import 'views/app_shell.dart';
 
 void main() {
   runApp(const BrainTumorApp());
@@ -19,13 +21,23 @@ class BrainTumorApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider<PredictionViewModel>(
-      create: (_) => PredictionViewModel(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<PredictionViewModel>(
+          create: (_) => PredictionViewModel(),
+        ),
+        ChangeNotifierProvider<AuthViewModel>(
+          create: (_) => AuthViewModel(),
+        ),
+        ChangeNotifierProvider<HistoryViewModel>(
+          create: (_) => HistoryViewModel()..load(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Clasificacion de tumores cerebrales',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.build(),
-        home: const HomeView(),
+        home: const AppShell(),
       ),
     );
   }
