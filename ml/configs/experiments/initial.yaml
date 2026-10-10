@@ -1,8 +1,7 @@
 # Preset del experimento inicial: comparativa de los cinco modelos.
 #
 # Uso:
-#   python ml/dataset/prepare.py --source ml/dataset/raw/saeedi2023 \
-#       --dest ml/dataset/processed          # ratios y seed de aqui abajo
+#   python ml/dataset/prepare.py              # Training/ -> train/val, Testing/ -> test
 #   python ml/training/train.py --model mobilenetv3 --preset ml/configs/experiments/initial.yaml
 #   python ml/training/run_all.py --preset ml/configs/experiments/initial.yaml
 #
@@ -14,12 +13,12 @@ experiment: initial
 version: v1
 
 dataset:
-  name: saeedi2023  # alternativa documentada: nickparvar2024 (requiere --flatten mental: ver prepare.py)
-  processed: ml/dataset/processed
-  splits:
-    train: 0.70
-    val: 0.15
-    test: 0.15
+  name: nickparvar2024
+  processed: ml/data/processed
+  training_split:
+    train: 0.80
+    val: 0.20
+  test_source: Testing
   seed: 42
 
 models:
@@ -30,21 +29,18 @@ models:
   - densenet121
 
 input:
-  size: 256  # informativo: el valor efectivo lo define cada ml/configs/<modelo>.yaml
+  size: 224
 
 training:
-  batch_size: 32
-  epochs: 30
-  optimizer: adamw
-  learning_rate: 0.0001
-  weight_decay: 0.0001
-  scheduler: cosine
-  early_stopping_patience: 7
+  batch_size: 64
+  epochs: 100
+  optimizer: adam
+  learning_rate: 0.001
+  loss: cross_entropy
 
 validation:
-  strategy: kfold
-  k_folds: 5
-  stratified: true
+  strategy: holdout
+  seed: 42
 
 seed: 42
 device: auto  # auto | cpu | cuda  (cuda para la RTX 5070: --device cuda)

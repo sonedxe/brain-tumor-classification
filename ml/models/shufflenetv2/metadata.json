@@ -1,0 +1,32 @@
+{
+  "architecture": "shufflenetv2",
+  "torchvision_name": "shufflenet_v2_x1_0",
+  "classes": [
+    "glioma",
+    "meningioma",
+    "pituitario",
+    "no_tumor"
+  ],
+  "class_to_idx": {
+    "glioma": 0,
+    "meningioma": 1,
+    "pituitario": 2,
+    "no_tumor": 3
+  },
+  "input_size": 224,
+  "normalization": {
+    "mode": "imagenet",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "best_val_accuracy": 0.9098214285714286,
+  "epoch": 98
+}

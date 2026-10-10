@@ -1,17 +1,18 @@
 # Datasets
 
-Este trabajo usa MRI de cerebro de dos fuentes publicas, ambas de Kaggle. El
-directorio `raw/` y `processed/` estan en `.gitignore`: las imagenes no se
-versionan por su tamano, se descargan con `download.py`.
+Este trabajo usa MRI de cerebro de Kaggle. Los directorios `ml/data/raw/` y
+`ml/data/processed/` estan en `.gitignore`: los datos originales y preparados
+son locales y no se versionan. Coloca en `ml/data/raw/` las carpetas
+`Training/` y `Testing/`, cada una con sus cuatro carpetas de clase.
 
-## Fuente 1 - 3.264 imagenes, 4 clases
+## Fuente 1 - 3.264 imagenes, 4 clases (documentacion historica)
 
 Saeedi et al., *A novel deep learning-based approach for classification of
 brain tumors*, Springerplus (2023).
 
 Clases: `glioma`, `meningioma`, `pituitario`, `no_tumor`.
 
-## Fuente 2 - 7.023 imagenes
+## Fuente 2 - Brain Tumor MRI Dataset
 
 Masoud Nickparvar, *Brain Tumor MRI Dataset*, Kaggle.
 
@@ -39,8 +40,15 @@ Resumen de comandos (desde la raiz del repositorio):
 
 ```bash
 python ml/smoke_test.py                                   # validacion sin GPU
-python ml/dataset/prepare.py --source <raw> --dest ml/dataset/processed
+python ml/dataset/prepare.py
 python ml/training/train.py --model mobilenetv3 --preset ml/configs/experiments/initial.yaml --device cuda
 python ml/training/run_all.py --preset ml/configs/experiments/initial.yaml --device cuda
+# Si ya existen artefactos de estos modelos, añadir --overwrite explícitamente.
 python ml/evaluation/metrics.py --model mobilenetv3 --weights ml/models/mobilenetv3/best.pt
 ```
+
+La preparacion divide solo las 5.600 imagenes de `Training/` con una
+permutacion global `randperm`, semilla 42: train (80%, 4.480) y val (20%,
+1.120). Conserva las 1.600 imagenes de `Testing/` como
+test. Para otras rutas se pueden usar `--source` y `--dest`; entrenamiento y
+evaluacion aceptan `--data-root`, tambien propagado por `run_all.py`.

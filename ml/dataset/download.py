@@ -8,7 +8,7 @@ from pathlib import Path
 
 from PIL import Image
 
-RAW_DIR = Path(__file__).resolve().parent / "raw"
+RAW_DIR = Path(__file__).resolve().parents[1] / "data" / "raw"
 
 DATASETS = {
     "saeedi2023": {
@@ -41,7 +41,7 @@ SUBTYPE_TO_CLASS = {
     "pituitary_tumor": "pituitario",
 }
 
-SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp"}
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
 def parse_args() -> argparse.Namespace:

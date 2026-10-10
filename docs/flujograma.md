@@ -14,18 +14,17 @@ salida: `glioma`, `meningioma`, `pituitario`, `no_tumor`.
 
 ## Fase 2 - Preprocesamiento y exploracion de datos
 
-Descarga del dataset, redimensionado a 256x256, conversion a RGB, y
-verificacion del balance de clases. La normalizacion se define por modelo en
-`ml/configs/` y no de forma global.
+Preparacion del dataset conservando `Training/` y `Testing/`, redimensionado a
+224x224, conversion a RGB y normalizacion ImageNet compartida.
 
 **Entregable:** `ml/dataset/`, `ml/evaluation/reports/`
 **Objetivo:** OE1
 
 ## Fase 3 - Entrenamiento de los cinco modelos
 
-Transfer learning con pesos ImageNet, primero congelando el backbone y luego
-con fine-tuning parcial. Cross-entropy como funcion de perdida. Validacion
-cruzada de 5 folds estratificada.
+Transfer learning con pesos ImageNet y backbone congelado. Solo se entrena la
+cabeza clasificadora con Adam y CrossEntropyLoss. La epoca se selecciona por
+accuracy de validacion; `Testing/` permanece reservado para evaluacion.
 
 **Entregable:** `ml/training/`, pesos en `ml/models/`
 **Objetivo:** OE1, OE4
@@ -54,7 +53,7 @@ extrema a extremo del flujo de subida de imagen.
 | OE1 | Identificar y evaluar arquitecturas CNN ligeras para clasificacion multiclase de tumores cerebrales en MRI | 1, 2, 3 |
 | OE2 | Seleccionar el modelo mas adecuado segun exactitud, tiempo de inferencia e interpretabilidad con Grad-CAM | 4 |
 | OE3 | Integrar el modelo seleccionado en un aplicativo movil mediante comunicacion cliente-servidor | 5 |
-| OE4 | Validar el rendimiento mediante validacion cruzada y comparar con el estado del arte | 3, 4 |
+| OE4 | Validar el rendimiento en conjuntos independientes y comparar con el estado del arte | 3, 4 |
 
 ## Dependencias entre fases
 

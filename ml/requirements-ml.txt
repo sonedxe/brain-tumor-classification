@@ -1,19 +1,6 @@
-# Entorno de modelo: Python 3.12
-#
-# torch y torchvision todavia no publican wheels estables para Python 3.14,
-# que es el `python3` por defecto de este equipo. Usar 3.12 explicitamente:
-#
-#   python3.12 -m venv .venv && source .venv/bin/activate
-
-# RTX 5070 (Blackwell): requiere torch con CUDA 12.8+, es decir torch>=2.7
-# instalado como variante cu128:
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-# En CPU (validacion rapida sin GPU):
-#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-torch>=2.7
-torchvision>=0.22
-timm==1.0.9
-
+# PyTorch and torchvision are installed separately from the selected official
+# CPU/CUDA index; see docs/ml-training-handoff.md. Keep them out of this file
+# so installing general dependencies cannot replace the selected wheel variant.
 scikit-learn==1.5.2
 # OJO: el nombre de distribucion en PyPI es `grad-cam` (provee el modulo
 # `pytorch_grad_cam`). `pytorch-grad-cam` no existe como distribucion.

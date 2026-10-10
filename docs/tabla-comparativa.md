@@ -1,18 +1,17 @@
 # Tabla comparativa (OE2)
 
-Formato de la tabla de resultados que compara los cuatro modelos optimizados
-contra ResNet18 como referencia. Los placeholders se completan con la salida de
-`ml/training/train.py` y `ml/evaluation/metrics.py`.
+Formato de resultados para las cinco arquitecturas. Los placeholders se
+completan con los artefactos de entrenamiento y `ml/evaluation/metrics.py`.
 
 ## Tabla principal
 
-| Modelo | Params (M) | Tamano (MB) | Exactitud | Macro F1 | Recall tumor | ms/imagen | Apto movil |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| MobileNetV3 | | | | | | | |
-| EfficientNetB0 | | | | | | | |
-| ShuffleNetV2 | | | | | | | |
-| DenseNet121 | | | | | | | |
-| **ResNet18 (ref.)** | | | | | | | |
+| Modelo | Params (M) | Tamano (MB) | Exactitud test | Macro F1 test | Recall tumor | ROC-AUC OVR | ms/imagen | Apto movil |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| MobileNetV3 | | | | | | | | |
+| EfficientNetB0 | | | | | | | | |
+| ShuffleNetV2 | | | | | | | | |
+| DenseNet121 | | | | | | | | |
+| **ResNet18 (ref.)** | | | | | | | | |
 
 ## Matrices de confusion
 
@@ -27,11 +26,12 @@ real: glioma
      no_tumor
 ```
 
-## Agregado de la validacion cruzada (OE4)
+## Seleccion del checkpoint por validacion
 
-Resultados de los 5 folds: media y desviacion estandar de cada metrica.
+La seleccion del checkpoint usa exclusivamente `val_accuracy`. Test se conserva
+aislado y se evalua una vez terminada la seleccion.
 
-| Modelo | Accuracy (media +- sd) | Macro F1 (media +- sd) |
+| Modelo | Mejor val_accuracy | Epoca |
 | --- | --- | --- |
 | MobileNetV3 | | |
 | EfficientNetB0 | | |
@@ -53,7 +53,7 @@ Resultados de los 5 folds: media y desviacion estandar de cada metrica.
 
 El modelo elegido debe ponderarse en este orden:
 
-1. **Exactitud y Macro F1** sostenidos en los 5 folds, no solo el mejor fold.
+1. **Exactitud y Macro F1** en el test independiente, junto con la mejor exactitud de validacion.
 2. **Recall de la clase tumoral**: en un apoyo diagnostico, el falso negativo
    es mas grave que el falso positivo.
 3. **Tiempo de inferencia por imagen** medido en el mismo hardware que se

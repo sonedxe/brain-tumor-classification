@@ -25,7 +25,7 @@ con evaluación de interpretabilidad mediante **Grad-CAM**.
            │  nunca se envía datos                           ▼
            │  del paciente                        ┌─────────────────────────┐
            │                                     │  ml/                    │
-           │                                     │  PyTorch + timm         │
+           │                                     │  PyTorch + torchvision │
            │                                     │  dataset / training /   │
            │                                     │  evaluation / models    │
            └─────────────────────────────────────►└─────────────────────────┘
@@ -40,7 +40,7 @@ a un sujeto.
 
 | Ruta | Contenido |
 | --- | --- |
-| `ml/` | Dataset, entrenamiento (PyTorch + timm), evaluación, Grad-CAM y pesos |
+| `ml/` | Dataset, entrenamiento (PyTorch + torchvision), evaluación, Grad-CAM y pesos |
 | `backend/` | API FastAPI, inferencia, persistencia SQLite |
 | `frontend/` | App Flutter con arquitectura MVVM |
 | `docs/` | Paper, tesis, notas de corrección y tabla comparativa |
@@ -85,10 +85,14 @@ en `/docs` cuando el servidor está corriendo.
 
 ### 1. Modelo (Python 3.12)
 
-```bash
-cd ml
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install -r requirements-ml.txt
+En Windows, desde la raíz del repositorio, sigue la guía de instalación ML en
+[`docs/ml-training-handoff.md`](docs/ml-training-handoff.md). Crea el entorno
+`.venv` en la raíz y usa siempre su `python.exe` para instalar dependencias y
+ejecutar los scripts. La guía incluye comandos PowerShell para CUDA 13.0 y CPU.
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
 ```
 
 ### 2. Backend

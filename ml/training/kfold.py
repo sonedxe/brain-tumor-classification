@@ -1,4 +1,4 @@
-"""Validacion cruzada estratificada de 5 folds (OE4).
+"""Utilidad heredada de validacion cruzada; no se usa en el protocolo vigente.
 
 Uso:
     python kfold.py --model mobilenetv3
@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--folds", type=int, default=None)
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--data-root", type=Path, default=None,
-                        help="processed/ alternativo (por defecto ml/dataset/processed)")
+                        help="processed/ alternativo (por defecto ml/data/processed)")
     return parser.parse_args()
 
 
@@ -83,6 +83,11 @@ def main() -> None:
     args = parse_args()
     config = load_config(args.model)
     validation = config["validation"]
+    if validation.get("strategy") != "kfold":
+        raise SystemExit(
+            "El protocolo activo usa holdout fijo de train/val y test independiente; "
+            "kfold.py no aplica a esta particion."
+        )
     n_splits = args.folds or validation["k_folds"]
     seed = args.seed or validation["seed"]
 

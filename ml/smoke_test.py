@@ -9,9 +9,9 @@ Uso (desde la raiz del repositorio):
 Comprueba, en orden:
   1. entorno: torch, CUDA disponible o no, nombre de GPU si existe;
   2. labels.json: 4 clases canonicas y orden;
-  3. prepare.py sobre imagenes sinteticas -> processed/{train,val,test} + splits.json;
+  3. prepare.py sobre Training/Testing sinteticos -> processed/{train,val,test} + splits.json;
   4. dataloader compartido: mismos splits para los 5 modelos, clases validadas;
-  5. los 5 modelos timm se construyen (pesos aleatorios, sin descargar) y el
+  5. los 5 modelos torchvision se construyen (pesos aleatorios, sin descargar) y el
      forward pass funciona, incluida 1 backward;
   6. metricas sobre predicciones ficticias;
   7. resolucion del target layer de Grad-CAM por modelo.
@@ -37,6 +37,10 @@ from dataset.prepare import CANONICAL_CLASSES, prepare
 from dataset.preprocessing import load_classes, load_config
 
 MODELS = ["mobilenetv3", "efficientnetb0", "shufflenetv2", "resnet18", "densenet121"]
+RAW_CLASSES = {
+    "glioma": "glioma", "meningioma": "meningioma",
+    "pituitary": "pituitario", "notumor": "no_tumor",
+}
 
 _results: list[tuple[str, bool, str]] = []
 
@@ -64,20 +68,45 @@ def main() -> int:
     try:
         with tempfile.TemporaryDirectory() as tmp:
             src = Path(tmp) / "raw_demo"
-            for cls in CANONICAL_CLASSES:
-                (src / cls).mkdir(parents=True)
+            for raw_cls in RAW_CLASSES:
+                (src / "Training" / raw_cls).mkdir(parents=True)
+                (src / "Testing" / raw_cls).mkdir(parents=True)
                 for i in range(12):
                     arr = (np.random.default_rng(i).random((64, 64, 3)) * 255).astype(np.uint8)
-                    Image.fromarray(arr).save(src / cls / f"img_{i:02d}.png")
+                    Image.fromarray(arr).save(src / "Training" / raw_cls / f"train_{i:02d}.png")
+                for i in range(4):
+                    arr = (np.random.default_rng(100 + i).random((64, 64, 3)) * 255).astype(np.uint8)
+                    Image.fromarray(arr).save(src / "Testing" / raw_cls / f"test_{i:02d}.png")
             dest = Path(tmp) / "processed"
-            manifest = prepare(src, dest, overwrite=True)
-            counts = manifest["counts"]
+            # This smoke test deliberately uses a tiny synthetic dataset; the
+            # CLI and real preparation retain the production count contract.
+            from unittest import mock
+
+            synthetic_counts = {
+                "Training": {name: 12 for name in RAW_CLASSES},
+                "Testing": {name: 4 for name in RAW_CLASSES},
+            }
+            with mock.patch("dataset.prepare.EXPECTED_COUNTS", synthetic_counts):
+                manifest = prepare(src, dest, overwrite=True)
+                counts = manifest["counts"]
+                second = prepare(src, Path(tmp) / "processed_again")
+                existing_destination_blocked = False
+                try:
+                    prepare(src, dest)
+                except FileExistsError:
+                    existing_destination_blocked = True
             ok = (
-                manifest["total"] == 48
+                manifest["total"] == 64
+                and sum(counts["train"].values()) == 38
+                and sum(counts["val"].values()) == 10
+                and sum(counts["test"].values()) == 16
+                and manifest["split_fingerprint"] == second["split_fingerprint"]
+                and existing_destination_blocked
                 and all(counts[s][c] > 0 for s in ("train", "val", "test") for c in CANONICAL_CLASSES)
                 and (dest / "splits.json").exists()
             )
-            check("prepare.py sintetico", ok, f"total={manifest['total']} {counts['train']}")
+            check("prepare.py splits + class aliases", ok,
+                  f"fingerprint={manifest['split_fingerprint'][:12]} counts={counts}")
 
             # 4. Dataloader compartido para los 5 modelos.
             from dataloader import build_dataloaders  # noqa: E402
@@ -91,20 +120,69 @@ def main() -> int:
             check("dataloader x5 identico", len(sizes) == 1, str(sizes.pop()))
 
             # 5. Construccion + forward + backward de los 5 modelos.
-            from train import build_model, build_optimizer  # noqa: E402
+            from model_factory import (  # noqa: E402
+                build_model, classifier_module, freeze_backbone,
+                set_frozen_batchnorm_eval, trainable_parameters,
+            )
 
             for model in MODELS:
-                config = load_config(model)
-                net = build_model({**config, "pretrained": False}, len(CANONICAL_CLASSES))
+                net = build_model(model, num_classes=len(CANONICAL_CLASSES), pretrained=False)
+                freeze_backbone(net, model)
+                head = classifier_module(net, model)
+                assert all(p.requires_grad for p in head.parameters())
+                head_ids = {id(p) for p in head.parameters()}
+                assert all(not p.requires_grad for p in net.parameters() if id(p) not in head_ids)
                 net.train()
-                images = torch.randn(2, 3, config["input"]["size"], config["input"]["size"])
+                batchnorms = [
+                    module for module in net.modules()
+                    if isinstance(module, torch.nn.modules.batchnorm._BatchNorm)
+                ]
+                buffers_before = [
+                    buffer.detach().clone()
+                    for module in batchnorms
+                    for buffer in (module.running_mean, module.running_var, module.num_batches_tracked)
+                    if buffer is not None
+                ]
+                set_frozen_batchnorm_eval(net)
+                assert all(not module.training for module in batchnorms)
+                images = torch.randn(2, 3, 224, 224)
                 labels = torch.tensor([0, 3])
-                loss = torch.nn.CrossEntropyLoss()(net(images), labels)
-                opt = build_optimizer(net, config)
+                logits = net(images)
+                assert logits.shape == (2, len(CANONICAL_CLASSES))
+                loss = torch.nn.CrossEntropyLoss()(logits, labels)
+                opt = torch.optim.Adam(list(trainable_parameters(net)), lr=0.001)
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
+                assert all(p.grad is None for p in net.parameters() if id(p) not in head_ids)
+                assert all(p.grad is not None for p in head.parameters())
+                buffers_after = [
+                    buffer
+                    for module in batchnorms
+                    for buffer in (module.running_mean, module.running_var, module.num_batches_tracked)
+                    if buffer is not None
+                ]
+                assert all(torch.equal(before, after) for before, after in zip(buffers_before, buffers_after))
+                # Every epoch starts with model.train(); the helper must restore frozen BN eval mode.
+                net.train()
+                set_frozen_batchnorm_eval(net)
+                assert all(not module.training for module in batchnorms)
             check("forward+backward x5", True, "batch=2, 1 paso")
+
+            # Una epoca comun sintetica demuestra train + validacion sin leer test.
+            from torch.utils.data import DataLoader, TensorDataset  # noqa: E402
+            from train import run_training  # noqa: E402
+
+            tiny = torch.nn.Sequential(torch.nn.Flatten(), torch.nn.Linear(3 * 8 * 8, 4))
+            tiny_optimizer = torch.optim.Adam(tiny.parameters(), lr=0.001)
+            toy = TensorDataset(torch.randn(4, 3, 8, 8), torch.tensor([0, 1, 2, 3]))
+            train_history, selected = run_training(
+                tiny, DataLoader(toy, batch_size=2), DataLoader(toy, batch_size=2),
+                torch.device("cpu"), 1, tiny_optimizer, architecture="synthetic",
+                classes=CANONICAL_CLASSES,
+            )
+            check("train+validation sinteticos", len(train_history) == 1 and selected is not None,
+                  f"val_accuracy={selected['val_accuracy']:.3f}")
 
             # 6. Metricas.
             from evaluation.metrics import compute_metrics  # noqa: E402
@@ -119,7 +197,7 @@ def main() -> int:
 
             for model in MODELS:
                 config = load_config(model)
-                net = build_model({**config, "pretrained": False}, len(CANONICAL_CLASSES))
+                net = build_model(model, num_classes=len(CANONICAL_CLASSES), pretrained=False)
                 layers = resolve_target_layers(net, config["gradcam"].get("target_layer"))
                 assert len(layers) == 1
             check("gradcam target_layer x5", True, "1 capa por modelo")

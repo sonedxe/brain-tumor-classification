@@ -3,7 +3,7 @@
 Los cinco modelos usan exactamente los mismos splits fisicos, generados una
 sola vez con `ml/dataset/prepare.py`:
 
-    ml/dataset/processed/{train,val,test}/<clase>/*.png
+    ml/data/processed/{train,val,test}/<clase>/*
 
 No se duplica el dataset por modelo: el nombre del modelo solo selecciona los
 transforms (normalizacion especifica) de su YAML.
@@ -26,7 +26,7 @@ from torchvision.datasets import ImageFolder
 from augmentation import build_train_transform, build_val_transform
 from dataset.preprocessing import load_classes, load_config
 
-PROCESSED_DIR = Path(__file__).resolve().parents[1] / "dataset" / "processed"
+PROCESSED_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 SPLITS = ("train", "val", "test")
 
 
@@ -48,7 +48,7 @@ def assert_classes_match(dataset_root: Path) -> None:
 def build_datasets(model_name: str, root: Path | None = None) -> tuple[Dataset, Dataset, Dataset]:
     """Tres splits COMPARTIDOS por los cinco modelos.
 
-    `root` es ml/dataset/processed (o un directorio temporal en pruebas).
+    `root` es ml/data/processed (o un directorio temporal en pruebas).
     `model_name` solo elige los transforms de ml/configs/<modelo>.yaml.
     """
     config = load_config(model_name)
@@ -103,9 +103,9 @@ def build_dataloaders(
     bs = batch_size or config["training"]["batch_size"]
     train_params = config["normalization"]
 
-    common = dict(num_workers=num_workers, pin_memory=torch.backends.mps.is_available())
+    common = dict(num_workers=num_workers, pin_memory=torch.cuda.is_available())
     train_loader = DataLoader(
-        train_ds, batch_size=bs, shuffle=True, drop_last=True, **common
+        train_ds, batch_size=bs, shuffle=True, drop_last=False, **common
     )
     val_loader = DataLoader(val_ds, batch_size=bs, shuffle=False, **common)
     test_loader = DataLoader(test_ds, batch_size=bs, shuffle=False, **common)

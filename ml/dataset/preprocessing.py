@@ -35,11 +35,8 @@ def resize(image: Image.Image, size: int) -> Image.Image:
 def normalize(array: np.ndarray, mean: list[float], std: list[float]) -> np.ndarray:
     """Normaliza a NCHW float32.
 
-    La normalizacion NO es la misma para los cinco modelos. MobileNetV3,
-    EfficientNetB0, ShuffleNetV2 y DenseNet121 usan mean=std=0.5, que equivale
-    al rango -1 a 1 del manuscripto. ResNet18 usa medias y desviaciones de
-    ImageNet. Aplicar una sola normalizacion a todos hace que ResNet18 entrene
-    sin converger, sin emitir error.
+    El pipeline acordado usa la misma normalizacion ImageNet para las cinco
+    arquitecturas.
     """
     mean_arr = np.asarray(mean, dtype=np.float32).reshape(1, 3, 1, 1)
     std_arr = np.asarray(std, dtype=np.float32).reshape(1, 3, 1, 1)

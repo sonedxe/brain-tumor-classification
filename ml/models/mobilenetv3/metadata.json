@@ -1,0 +1,32 @@
+{
+  "architecture": "mobilenetv3",
+  "torchvision_name": "mobilenet_v3_large",
+  "classes": [
+    "glioma",
+    "meningioma",
+    "pituitario",
+    "no_tumor"
+  ],
+  "class_to_idx": {
+    "glioma": 0,
+    "meningioma": 1,
+    "pituitario": 2,
+    "no_tumor": 3
+  },
+  "input_size": 224,
+  "normalization": {
+    "mode": "imagenet",
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ]
+  },
+  "best_val_accuracy": 0.9375,
+  "epoch": 91
+}

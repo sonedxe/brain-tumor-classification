@@ -4,50 +4,18 @@ Registro de las desviaciones entre lo que dice el paper (LEIRD 2025) y lo que
 realmente hace el codigo. Sirve para actualizar el manuscripto antes del envio
 y para responder en sustentacion si alguien lo pregunta.
 
-## 1. ImageDataGenerator -> transforms de torchvision
+## 1. Transformaciones de entrenamiento
 
-**Donde aparece en el paper:** seccion de preprocesamiento, donde se describe
-`ImageDataGenerator` con rotacion, zoom y flip.
+Las cinco arquitecturas se entrenan mediante `torchvision.transforms`.
+Entrenamiento: `Resize((224, 224))`, `RandomHorizontalFlip()`,
+`RandomRotation(10)`, `ToTensor()` y normalizacion ImageNet. Validacion/test
+usan Resize, ToTensor y la misma normalizacion, sin aumentos aleatorios.
 
-**Que hace el codigo:** `ml/dataset/augmentation.py` usa
-`torchvision.transforms`, concretamente `timm.data.create_transform` a partir de
-`resolve_data_config()` del modelo.
+## 2. Normalizacion ImageNet y tamano de entrada
 
-**Por que:** `keras.applications` no incluye **ResNet18** ni **ShuffleNetV2**,
-que son respectivamente el modelo de referencia y uno de los tres candidatos
-principales. Sin esos pesos ImageNet, ambos habrian que entrenarse desde cero
-con 3.264 imagenes, lo que invalida la premisa de transfer learning del
-trabajo y hace incomparable la tabla. `timm` si provee los cinco modelos con
-pesos ImageNet y una API uniforme, que es la garantia de que la comparacion sea
-homogenea.
-
-**Como actualizarlo:** sustituir la mencion de `ImageDataGenerator` por
-"data augmentation" o por `torchvision.transforms`. La lista de transformaciones
-(rotation, zoom, horizontal flip) se mantiene igual.
-
-## 2. Normalizacion distinta por modelo
-
-**Donde aparece en el paper:** seccion de preprocesamiento, donde se indica
-normalizacion en el rango -1 a 1.
-
-**Realidad:** ese rango solo es valido para 3 de los 5 modelos.
-
-| Modelo | Normalizacion | Es -1 a 1 |
-| --- | --- | --- |
-| MobileNetV3 | `mean=std=0.5` | si |
-| EfficientNetB0 | `mean=std=0.5` | si |
-| ShuffleNetV2 | `mean=std=0.5` | si |
-| DenseNet121 | `mean=std=0.5` | si |
-| ResNet18 | medias y desviaciones de ImageNet | **no** |
-
-Ademas el paper menciona la entrada como `256x256x3` (formato TensorFlow). El
-formato real de PyTorch es `NCHOS` -> `3x256x256`, donde `N` es el batch size.
-
-**Como actualizarlo:** indicar que la normalizacion se define por modelo desde
-`ml/configs/<modelo>.yaml` y que el tensor de entrada es `3x256x256`.
-
-**Por que importa:** usar una sola normalizacion para los cinco modelos hace que
-ResNet18 entrene sin converger, sin dar error visible. Es un fallo silencioso.
+Los cinco modelos usan media `[0.485, 0.456, 0.406]` y desviacion
+`[0.229, 0.224, 0.225]`. El tensor PyTorch es `N x 3 x 224 x 224`.
+La configuracion se encuentra en `ml/configs/<modelo>.yaml`.
 
 ## 3. DenseNet121 como quinto modelo
 
@@ -65,39 +33,24 @@ comparacion queda con cuatro modelos optimizados y una referencia.
 
 ## 4. Grad-CAM en la capa correcta
 
-La capa objetivo de Grad-CAM no es la misma en las cinco arquitecturas, y
-equivocarse produce un mapa de calor vacio o ruido. El valor esta en
-`gradcam.target_layer` dentro de cada YAML de `ml/configs/`,
-`ml/evaluation/gradcam.py` resuelve `nombre`, `nombre[indice]` e indices
-sueltos, y busca la ultima capa convolucional cuando el valor no se especifica.
+La capa objetivo de Grad-CAM es especifica de cada arquitectura y se declara
+por YAML. `ml/evaluation/gradcam.py` resuelve atributos e indices:
 
-| Modelo | Capa objetivo | Nota |
-| --- | --- | --- |
-| MobileNetV3 | `conv_head` | timm no expone `features` en esta arquitectura |
-| EfficientNetB0 | `conv_head` | idem |
-| ShuffleNetV2 | `conv5` | modulo torchvision (ver seccion 7) |
-| DenseNet121 | `features.denseblock4` | `features[-1]` seria norm5, que no convoluciona |
-| ResNet18 | `layer4[-1]` | ultimo bloque residual |
+| Modelo | Capa objetivo |
+| --- | --- |
+| MobileNetV3 | `features[-1]` |
+| EfficientNetB0 | `features[-1]` |
+| ShuffleNetV2 | `conv5` |
+| DenseNet121 | `features.denseblock4` |
+| ResNet18 | `layer4[-1]` |
 
-## 5. ShuffleNetV2 se construye con torchvision, no con timm
+## 5. Las cinco arquitecturas usan torchvision
 
-**Estado:** timm 1.x no incluye ningun modelo ShuffleNet (verificado en 0.9.16 y
-1.0.9: cero coincidencias en el registro). El `timm_name: shufflenet_v2_x1_0` del
-YAML habria abortado el entrenamiento con `Unknown model`.
-
-**Decision tomada:** `ml/configs/shufflenetv2.yaml` declara `source: torchvision`
-y `ml/training/train.py::build_model` lo construye con
-`torchvision.models.shufflenet_v2_x1_0(weights=IMAGENET1K_V1)`, reemplazando su
-`fc` por `Dropout(0.3) + Linear(..., 4)`. Esquema freeze hasta la epoca 15 y
-fine-tuning posterior identicos a los otros cuatro. La premisa de transfer
-learning con pesos ImageNet se mantiene.
-
-**Acciones sobre el manuscripto:**
-
-- Donde diga "los cinco modelos usan timm", precisar que ShuffleNetV2 usa
-  torchvision con pesos ImageNet equivalentes.
-- Mantener la fila de ShuffleNetV2 en todas las tablas: la comparacion sigue
-  siendo homogenea (mismos splits, mismo head de 4 clases, mismo protocolo).
+`ml/training/model_factory.py` usa las cinco implementaciones torchvision y
+sus pesos ImageNet. Reemplaza la capa final especifica: `classifier[-1]` para
+MobileNetV3 y EfficientNetB0, `fc` para ShuffleNetV2 y ResNet18, y
+`classifier` para DenseNet121. El entrenamiento congela los parametros
+preentrenados y optimiza solo la capa de salida nueva.
 
 ## 6. Base de datos SQLite
 

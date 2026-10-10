@@ -1,4 +1,4 @@
-# Handoff: entrenamiento de los cinco modelos (máquina RTX 5070)
+# Handoff: entrenamiento de los cinco modelos (Windows / CUDA 13.0)
 
 Guía para ejecutar el experimento comparativo en una máquina independiente.
 Backend y frontend **no se tocan**: siguen funcionando con `MOCK_INFERENCE=true`.
@@ -9,115 +9,172 @@ Clases (`ml/configs/labels.json`, no modificar): `glioma`, `meningioma`, `pituit
 
 ## 1. Requisitos
 
-- Python 3.12, GPU NVIDIA con CUDA 12.8+ (RTX 5070 Blackwell: exige `torch>=2.7`).
-- ~10 GB libres (dataset + pesos + reportes).
-- Acceso a Kaggle para descargar el dataset (cuenta + ZIP descargado a mano).
+- Python 3.12.
+- Para GPU: Windows, GPU NVIDIA y controladores compatibles con CUDA 13.0.
+- Para otros equipos o validaciones breves: la variante CPU.
+- ~10 GB libres (dataset + pesos + reportes) y acceso a Kaggle para descargar
+  el dataset de Masoud Nickparvar.
 
-## 2. Instalación
+## 2. Instalación en Windows (PowerShell)
 
-```bash
-cd ml
-python3.12 -m venv .venv && source .venv/bin/activate
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
-pip install -r requirements-ml.txt
-python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+Ejecuta desde la raíz del repositorio. Instala primero el par exacto de PyTorch
+y torchvision desde el índice oficial de la variante elegida. El archivo
+`ml/requirements-ml.txt` contiene solo dependencias generales y excluye ambos
+paquetes, de modo que el segundo paso no sustituye la variante CUDA o CPU.
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+# GPU NVIDIA, CUDA 13.0: índice oficial de PyTorch
+.\.venv\Scripts\python.exe -m pip install torch==2.14.1+cu130 torchvision==0.29.1+cu130 --index-url https://download.pytorch.org/whl/cu130
+.\.venv\Scripts\python.exe -m pip install -r ml/requirements-ml.txt
 ```
 
-Notas:
+Para ejecutar los comandos `python ...` de las secciones siguientes, activa el
+entorno en la sesión de PowerShell:
 
-- `requirements-ml.txt` pide `torch>=2.7`: la RTX 5070 no funciona con torch 2.5/CUDA 12.4.
-- El nombre de distribución de Grad-CAM en PyPI es `grad-cam` (provee el módulo
-  `pytorch_grad_cam`). Ya está corregido en el requirements.
-
-## 3. Descarga del dataset
-
-Dataset principal: **saeedi2023** (3264 imágenes, 4 clases nativas, el del artículo base).
-Alternativa: **nickparvar2024** (7023 imágenes con subcategorías `glioma_*`, `pituitary*`,
-`notumor`/`normal`: se normalizan solas a las 4 canónicas).
-
-```bash
-# Desde la RAIZ del repo. <zip> = archivo descargado de Kaggle.
-python ml/dataset/download.py --dataset saeedi2023 --archive <zip> --flatten
-# Deja las imagenes en ml/dataset/raw/saeedi2023/processed/
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
-## 4. Preparación del dataset (UNA sola partición compartida)
+Si PowerShell no permite activar scripts, prefija esos comandos con
+`.\.venv\Scripts\python.exe` en lugar de `python`.
 
-Los cinco modelos entrenan sobre **los mismos splits físicos** (comparación justa).
-Proporción fijada en el preset: **70% train / 15% val / 15% test, seed=42, estratificado**.
+Para CPU, usa este primer comando en lugar del comando CUDA y después instala
+el mismo requirements:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install torch==2.14.1+cpu torchvision==0.29.1+cpu --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r ml/requirements-ml.txt
+```
+
+Comprueba las versiones y dependencias instaladas:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import torch, torchvision; print('torch', torch.__version__, 'torchvision', torchvision.__version__, 'CUDA', torch.cuda.is_available())"
+.\.venv\Scripts\python.exe -m pip check
+```
+
+PyTorch publica el par CUDA 13.0 y su variante CPU para Windows. No se instala
+`torchaudio`, porque el proyecto no lo utiliza. El nombre de distribución de
+Grad-CAM en PyPI es `grad-cam` (provee el módulo `pytorch_grad_cam`). La receta
+está documentada, pero no se ha ejecutado en este entorno.
+
+## 3. Ubicación del dataset
+
+Descarga el Brain Tumor MRI Dataset de Masoud Nickparvar desde Kaggle y coloca
+sus imágenes originales dentro de `ml/data/raw/`, conservando esta estructura:
+
+```text
+ml/data/raw/
+├── Training/
+│   ├── glioma/
+│   ├── meningioma/
+│   ├── pituitary/
+│   └── notumor/
+└── Testing/
+    ├── glioma/
+    ├── meningioma/
+    ├── pituitary/
+    └── notumor/
+```
+
+Los datos originales y preparados están excluidos de Git. No se requiere la
+carpeta experimental. Las clases `pituitary` y `notumor` se normalizan como
+`pituitario` y `no_tumor` según `ml/configs/labels.json`.
+
+```bash
+# Opcional: el descargador extrae el ZIP bajo ml/data/raw/<dataset>/original/.
+python ml/dataset/download.py --dataset nickparvar2024 --archive <zip>
+```
+
+Si extraes con ese comando, pasa `ml/data/raw/nickparvar2024/original` como
+`--source`; para usar los valores predeterminados, coloca `Training/` y
+`Testing/` directamente dentro de `ml/data/raw/`.
+
+## 4. Preparacion del dataset (splits compartidos)
+
+Los cinco modelos entrenan sobre los mismos splits. Solo `Training/` se divide
+con una permutacion global `randperm`, seed=42: 80% train / 20% val. Las 1.600 imagenes de
+`Testing/` se conservan integras como test y no seleccionan checkpoints.
 
 ```bash
 # Desde la RAIZ del repo:
-python ml/dataset/prepare.py --source ml/dataset/raw/saeedi2023/processed --dest ml/dataset/processed
+python ml/dataset/prepare.py
 ```
 
-Verifica la salida: tabla de conteos por split y clase + `ml/dataset/processed/splits.json`
+Verifica la salida: tabla de conteos por split y clase + `ml/data/processed/splits.json`
 (manifiesto con seed, ratios y totales). Regenerar exige `--overwrite`.
-No dupliques el dataset por modelo: `ml/training/dataloader.py` apunta a este único
+No dupliques el dataset por modelo: `ml/training/dataloader.py` apunta a este unico
 `processed/` y valida el conjunto y el orden de clases contra `labels.json`,
-remapeando los índices alfabéticos de `ImageFolder` al orden canónico.
+remapeando los indices alfabeticos de `ImageFolder` al orden canunico.
 
-Opcional (trazabilidad de la validación cruzada, no obligatorio para entrenar):
+Opcional (trazabilidad de la validacion cruzada, no obligatorio para entrenar):
 
 ```bash
-python ml/training/kfold.py --model mobilenetv3   # usa seed=42 y 5 folds del YAML
+python ml/training/kfold.py --model mobilenetv3
 ```
 
-## 5. Smoke test (2 min, sin GPU, sin descargar pesos)
+## 5. Validacion rapida
 
 ```bash
-# Desde la RAIZ del repo:
-python ml/smoke_test.py   # debe terminar 7/7 OK, exit 0
+python ml/smoke_test.py
 ```
 
-Comprueba: entorno, labels, `prepare.py` sintético, dataloader idéntico x5,
-forward+backward x5, métricas y target layers de Grad-CAM. Si algo falla aquí,
-no sigas: reporta el fallo.
+El smoke test usa imagenes sinteticas y pesos aleatorios: valida aliases de
+clase, reproducibilidad de la particion, que no se sobrescriba un destino,
+construccion de las cinco arquitecturas, cuatro logits, cabeza entrenable,
+forward/backward, una epoca sintetica de train/validacion, metricas y Grad-CAM.
+No usa el conjunto real ni ejecuta el test para seleccionar checkpoints.
 
-## 6. Entrenar UN modelo
+## 6. Entrenar un modelo
 
 ```bash
-# Desde la RAIZ del repo. Ejemplo con el baseline de referencia:
 python ml/training/train.py --model resnet18 --preset ml/configs/experiments/initial.yaml --device cuda
 ```
 
-Flags útiles: `--epochs N`, `--batch-size N`, `--device cuda|cpu|auto`, `--seed N`,
-`--data-root <processed alternativo>`, `--fold N` (solo informativo junto a kfold).
-Hiperparámetros del preset (`ml/configs/experiments/initial.yaml`, no editar sin motivo):
-epochs 30, batch 32, AdamW lr=1e-4 wd=1e-4, scheduler cosine, early stopping paciencia 7,
-seed 42. Transfer learning: backbone congelado (head entrenable) hasta la época 15,
-luego fine-tuning completo.
+Usa batch 64, hasta 100 epocas, Adam con learning rate 0.001 y CrossEntropyLoss.
+Para una corrida corta de comprobacion se puede pasar `--epochs 1`. Si ya existe
+`ml/models/resnet18/best.pt` o su historial, la ejecucion se detiene; agrega
+`--overwrite` para autorizar reemplazarlos. `--data-root` permite indicar otro
+processed/.
 
-## 7. Entrenar LOS CINCO (experimento oficial)
+## 7. Entrenar los cinco modelos
 
 ```bash
-# Desde la RAIZ del repo, una sola línea:
 python ml/training/run_all.py --preset ml/configs/experiments/initial.yaml --device cuda
 ```
 
-Variantes: `--models mobilenetv3 resnet18` (subconjunto), `--skip-train` (solo evaluar),
-`--skip-eval` (solo entrenar). Al final escribe `ml/evaluation/reports/comparison.json`
-e imprime la tabla comparativa. Equivalente manual por modelo: el comando de la
-sección 6 con `--model <uno-de-los-cinco>`.
+Opcional: `--data-root <ruta>` para una particion procesada alternativa y
+`--overwrite` para autorizar el reemplazo de artefactos de entrenamiento por
+arquitectura. Los informes de evaluación se guardan en un directorio único por
+ejecución y no reemplazan resultados anteriores. `--skip-eval` omite test y no
+lee informes anteriores ni escribe una comparación.
+Tambien se aceptan `--models mobilenetv3 resnet18`, `--skip-train` y
+`--skip-eval`. Cada arquitectura tiene su propio directorio `ml/models/<modelo>/`.
 
-Detalle relevante: ShuffleNetV2 se construye con **torchvision** (`shufflenet_v2_x1_0`,
-pesos `IMAGENET1K_V1`) porque timm 1.x no incluye ningún ShuffleNet. El esquema
-freeze→fine-tuning, el head de 4 clases con dropout 0.3 y las condiciones de
-entrenamiento son las mismas que en los otros cuatro.
+Todos usan torchvision y sus pesos ImageNet. ShuffleNetV2 usa
+`shufflenet_v2_x1_0`; MobileNetV3 usa MobileNetV3 Large. Cada una reemplaza su
+cabeza segun la API de torchvision y entrena solo la capa de salida nueva.
 
-## 8. Evaluación
+## 8. Evaluacion
 
-Automática dentro de `run_all.py`. Manual por modelo:
+`run_all.py` evalua cada checkpoint en el split test despues de completar el
+entrenamiento de esa arquitectura. Si su entrenamiento falla, no evalua ningun
+checkpoint previo de ese modelo. Para evaluar manualmente un modelo:
 
 ```bash
-python ml/evaluation/metrics.py --model <nombre> --weights ml/models/<nombre>/best.pt
+python ml/evaluation/metrics.py --model resnet18 --weights ml/models/resnet18/best.pt
 ```
 
-Genera `ml/evaluation/reports/<nombre>_metrics.json` con: accuracy, macro
-precision/recall/F1, weighted F1, tumor recall, tumor sensitivity, specificity
-no_tumor, confusion matrix, classification report, ms/imagen, nº de parámetros
-y tamaño del checkpoint en MB. Con esos JSON se rellena `docs/tabla-comparativa.md`
-(la columna "Apto móvil" NO se calcula: criterio posterior, no automático).
+El comando manual se detiene si ya existe `resnet18_metrics.json`; usa
+`--overwrite-report` solo si deseas reemplazarlo. `run_all.py` pasa un directorio
+de salida único por ejecución y guarda allí los informes y `comparison.json`.
+
+Guarda un JSON por arquitectura en `ml/evaluation/reports/` con accuracy,
+precision/recall/F1 macro y weighted, matriz de confusion, reporte por clase,
+ROC-AUC multiclase one-vs-rest macro y AUC por clase cuando se puedan calcular.
+El test solo se usa en esta evaluacion final, nunca para escoger la epoca.
 
 ## 9. Grad-CAM
 
@@ -126,7 +183,7 @@ Una vez exista `best.pt`, con una imagen cualquiera del test:
 ```bash
 python ml/evaluation/gradcam.py --model <nombre> \
     --weights ml/models/<nombre>/best.pt \
-    --image ml/dataset/processed/test/glioma/<archivo>.png \
+    --image ml/data/processed/test/glioma/<archivo>.png \
     --output ml/evaluation/reports/<nombre>_ejemplo.png
 ```
 
@@ -134,16 +191,15 @@ El target layer correcto por arquitectura ya está en cada `ml/configs/<modelo>.
 (`conv_head`, `conv5`, `layer4[-1]`, `features.denseblock4`); el script lo resuelve
 solo. Guarda el PNG y muestra la clase predicha.
 
-## 10. Dónde queda cada resultado
+## 10. Artefactos por arquitectura
 
 ```text
-ml/models/<modelo>/best.pt          checkpoint ganador (gitignored)
-ml/models/<modelo>/history.json     curva train_loss/val_loss/val_acc por época
-ml/models/<modelo>/metadata.json    contrato para backend (ver sección 11)
-ml/evaluation/reports/<modelo>_metrics.json   métricas + matriz + tiempos + params
-ml/evaluation/reports/comparison.json         fila resumen por modelo
-ml/evaluation/reports/<modelo>_*.png          ejemplos Grad-CAM
-ml/dataset/processed/splits.json    manifiesto de la partición usada
+ml/models/<modelo>/best.pt                 checkpoint elegido por val_accuracy
+ml/models/<modelo>/history.json            historial train/validacion
+ml/models/<modelo>/metadata.json           arquitectura, clases, preproceso y checkpoint
+ml/evaluation/reports/runs/<run-id>/<modelo>_metrics.json metricas y matriz
+ml/evaluation/reports/runs/<run-id>/comparison.json      resumen de esta ejecucion
+ml/data/processed/splits.json              archivos y huella de la particion
 ```
 
 ## 11. Qué entregarme al finalizar
@@ -153,22 +209,20 @@ ml/dataset/processed/splits.json    manifiesto de la partición usada
 3. `splits.json` del `processed/` usado (o confirmación de que es el regenerado con seed 42).
 4. 1 PNG Grad-CAM por modelo sobre imagen de test (misma imagen idealmente).
 5. La tabla `docs/tabla-comparativa.md` rellena (solo columnas medidas).
-6. Nota de cualquier desviación del preset (épocas reales por early stopping,
-   incidencias de GPU, tiempos aproximados por modelo).
+6. Nota de cualquier desviacion del protocolo, incidencias de GPU y tiempos aproximados por modelo.
 
 ### Contrato `metadata.json` (lo que backend consumirá después)
 
 ```json
 {
-  "model": "mobilenetv3",
-  "version": "mobilenetv3-v1",
-  "timm_name": "mobilenetv3_large_100",
+  "architecture": "mobilenetv3",
+  "torchvision_name": "mobilenet_v3_large",
   "classes": ["glioma", "meningioma", "pituitario", "no_tumor"],
-  "num_classes": 4,
-  "input_size": 256,
-  "normalization": {"mode": "tanh", "mean": [0.5, 0.5, 0.5], "std": [0.5, 0.5, 0.5]},
-  "best_val_accuracy": 0.93,
-  "epoch": 22
+  "class_to_idx": {"glioma": 0, "meningioma": 1, "pituitario": 2, "no_tumor": 3},
+  "input_size": 224,
+  "normalization": {"mode": "imagenet", "mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]},
+  "best_val_accuracy": null,
+  "epoch": null
 }
 ```
 

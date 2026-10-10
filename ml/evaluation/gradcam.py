@@ -7,7 +7,7 @@ no se indica.
 
 Uso:
     python gradcam.py --model mobilenetv3 --weights ../models/mobilenetv3/best.pt \
-        --image ../../dataset/raw/ejemplo.png --output reports/mobilenetv3_ejemplo.png
+        --image ../../data/raw/ejemplo.png --output reports/mobilenetv3_ejemplo.png
 """
 
 from __future__ import annotations
@@ -69,12 +69,15 @@ def resolve_target_layers(model: nn.Module, spec: str | None) -> list[nn.Module]
 
 
 def load_model(model_name: str, weights: Path, device: torch.device) -> tuple[nn.Module, dict]:
-    from train import build_model
+    from model_factory import build_model
 
     config = load_config(model_name)
     classes = load_classes()
     checkpoint = torch.load(weights, map_location=device, weights_only=False)
-    model = build_model(config, len(classes))
+    architecture = checkpoint.get("architecture", model_name)
+    if architecture != model_name:
+        raise ValueError(f"Checkpoint de {architecture} no corresponde a --model {model_name}")
+    model = build_model(architecture, num_classes=len(classes), pretrained=False)
     model.load_state_dict(checkpoint["state_dict"])
     model.to(device).eval()
     return model, config

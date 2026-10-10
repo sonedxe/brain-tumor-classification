@@ -23,6 +23,10 @@ backend/media/*
 # Datasets crudos (descargados, no versionados)
 ml/dataset/raw/
 ml/dataset/processed/
+ml/data/raw/*
+!ml/data/raw/.gitkeep
+ml/data/processed/*
+!ml/data/processed/.gitkeep
 ml/dataset/*.zip
 *.csv
 
