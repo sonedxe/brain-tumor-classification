@@ -61,6 +61,6 @@ La fase 5 depende de la 4: la API no puede cargar pesos hasta que haya un
 modelo elegido y exportado. La fase 4 depende de la 3. La fase 3 depende de
 que la fase 2 confirme que el dataset es utilizable.
 
-Esta dependencia es la razon de que el backend se desarrolle con `MOCK_INFERENCE`:
-permite construir y probar toda la capa de comunicacion e interfaz en paralelo
-con el entrenamiento, sin esperar a que termine.
+Por esa dependencia, el backend se desarrollo en paralelo al entrenamiento con
+una respuesta simulada, lo que permitio construir y probar toda la capa de
+comunicacion e interfaz sin esperar a los pesos. Hoy la inferencia es real.

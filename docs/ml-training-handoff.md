@@ -1,10 +1,9 @@
 # Handoff: entrenamiento de los cinco modelos (Windows / CUDA 13.0)
 
 Guía para ejecutar el experimento comparativo en una máquina independiente.
-Backend y frontend **no se tocan para entrenar**: siguen funcionando con
-`MOCK_INFERENCE=true`. La integración real (carga de `best.pt` y Grad-CAM) ya
-está implementada en `backend/app/services/` y se activa al dejar el checkpoint
-en la ruta de `MODEL_PATH`.
+Backend y frontend **no se tocan para entrenar**. La carga de pesos y el
+Grad-CAM ya están implementados en `backend/app/services/`: basta con dejar el
+checkpoint en la ruta de `MODEL_PATH`.
 
 Modelos: MobileNetV3, EfficientNetB0, ShuffleNetV2, ResNet18 (referencia), DenseNet121.
 Clases (`ml/configs/labels.json`, no modificar): `glioma`, `meningioma`, `pituitario`, `no_tumor`.
@@ -231,4 +230,4 @@ ml/data/processed/splits.json              archivos y huella de la particion
 Backend ya consume este contrato: `backend/app/services/inference.py` lee
 `architecture`, `state_dict`, `classes`, `input_size` y `normalization` del
 checkpoint para montar el modelo. No hace falta tocar `backend/` ni `frontend/`;
-basta con dejar el `best.pt` en `MODEL_PATH` y poner `MOCK_INFERENCE=false`.
+basta con dejar el `best.pt` en `MODEL_PATH`.

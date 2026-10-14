@@ -53,10 +53,8 @@ inferencia y persiste únicamente el *hash* de la imagen, y una aplicación
 
 El estado actual corresponde a la **semana 8**. El pipeline de entrenamiento,
 la API, la aplicación móvil y su documentación están implementados y
-verificados. La inferencia real (carga de pesos + Grad-CAM) ya está
-implementada en el backend: al colocar los checkpoints `best.pt` y desactivar
-`MOCK_INFERENCE`, el sistema pasa de modo simulado a real sin cambiar el
-contrato HTTP.
+verificados. La inferencia real (carga de pesos + Grad-CAM) está implementada y
+en funcionamiento, sin cambiar el contrato HTTP.
 
 **Palabras clave:** tumores cerebrales, aprendizaje profundo, CNN, Grad-CAM,
 MVVM, Flutter, FastAPI, Scrum.
@@ -246,10 +244,10 @@ y la *Definition of Done*.
 ### 7.4 Estrategia de mitigación del riesgo
 
 La Fase 5 depende de la Fase 4 (no hay pesos hasta elegir el modelo). Para no
-bloquear el desarrollo del cliente, el backend opera con
-**`MOCK_INFERENCE=true`**: devuelve una predicción ficticia pero determinista a
-partir del contenido de la imagen. De este modo, ML, backend y frontend avanzan
-en paralelo y la integración real se limita a implementar la carga de pesos.
+bloquear el desarrollo del cliente, el backend se desarrolló en paralelo con una
+respuesta simulada determinista a partir del contenido de la imagen. Así, ML,
+backend y frontend avanzaron en paralelo y la integración real quedó reducida a
+cargar los pesos, ya implementada.
 
 ## 8. Desarrollo e implementación
 
@@ -397,14 +395,14 @@ View --intención--> ViewModel --petición--> Repository --► Service --► API
 
 ### 9.2 Evidencia funcional (verificación de extremo a extremo)
 
-Con el servidor corriendo en modo mock se comprobó:
+Con el servidor corriendo con inferencia real se comprobó:
 
 ```
-GET  /api/v1/health          → {"status":"ok_mock", ..., "classes":[...]}
-POST /api/v1/auth/register   → {"access_token":"<jwt>", "name":"Equipo", "mock":false}
+GET  /api/v1/health          → {"status":"ok", "model_ready":true, "classes":[...]}
+POST /api/v1/auth/register   → {"access_token":"<jwt>", "name":"Equipo", ...}
 POST /api/v1/auth/login      → {"access_token":"<jwt>", ...}
 GET  /api/v1/auth/me         → {"id":1, "name":"Equipo", "email":"..."}
-POST /api/v1/predict         → {"label":"pituitario", "confidence":0.407, ...}
+POST /api/v1/predict         → {"label":"glioma", "confidence":0.66, "gradcam_path":"/static/gradcam/..."}
 GET  /api/v1/history         → [ {id, label, confidence, model_version, ...} ]
 ```
 

@@ -128,10 +128,9 @@ El modelo ganador se expone como servicio REST (FastAPI, contrato JSON) y se
 persiste solo el **hash SHA-256** de cada imagen junto a etiqueta, confianza,
 versión del modelo y tiempo de inferencia. La app Flutter consume la API con
 arquitectura **MVVM** (Model–View–ViewModel) y ofrece cuatro pantallas
-consolidadas. La carga del modelo real (pesos torchvision + Grad-CAM) ya está
-implementada en el backend; `MOCK_INFERENCE=true` actúa solo como respaldo
-cuando no hay pesos en disco, para no bloquear el desarrollo del cliente. La
-cuenta es opcional y usa **JWT real** con sesión persistente en el dispositivo.
+consolidadas. La carga del modelo real (pesos torchvision + Grad-CAM) está implementada en el
+backend y en funcionamiento con el modelo elegido, sin cambiar el contrato HTTP.
+La cuenta es opcional y usa **JWT real** con sesión persistente en el dispositivo.
 
 ## IV. Resultados
 
@@ -174,8 +173,7 @@ medición de milisegundos por imagen requiere el mismo hardware de destino y se
 deja como paso de validación.
 
 **Integración.** El backend carga el checkpoint (`best.pt`) y ejecuta la
-inferencia real y el Grad-CAM sin cambiar el contrato HTTP; el modo
-`MOCK_INFERENCE` queda solo como respaldo cuando no hay pesos. Así, la capa de
+inferencia real y el Grad-CAM sin cambiar el contrato HTTP. Así, la capa de
 modelo y la de software evolucionan de forma independiente.
 
 **Limitaciones.** Los resultados provienen de una única partición de prueba; no

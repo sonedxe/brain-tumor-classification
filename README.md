@@ -110,13 +110,10 @@ cp ../.env.example .env
 uvicorn app.main:app --reload
 ```
 
-Con `MOCK_INFERENCE=true` (por defecto) `/predict` responde sin necesidad de
-pesos entrenados, lo que permite desarrollar el frontend de inmediato.
-
-Para **inferencia real** instala `backend/requirements-inference.txt` (torch +
-torchvision, desde el índice oficial de PyTorch según la variante CPU/CUDA),
-coloca el `best.pt` en la ruta de `MODEL_PATH` y pon `MOCK_INFERENCE=false`. En
-producción define además un `JWT_SECRET` propio.
+La inferencia es **real**: instala `torch` + `torchvision` (vienen en
+`backend/requirements.txt`; usa la variante CPU/CUDA del índice oficial de
+PyTorch) y coloca el `best.pt` del modelo elegido en la ruta de `MODEL_PATH`.
+En producción define además un `JWT_SECRET` propio.
 
 ### 3. Frontend
 
@@ -128,7 +125,13 @@ flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000/api/v1
 
 `10.0.2.2` es el alias del host desde el emulador de Android. En iOS Simulator
 usar `http://localhost:8000/api/v1`; en dispositivo físico, la IP local de la
-máquina.
+máquina. En **Chrome/Web**:
+
+```bash
+flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000/api/v1
+```
+
+El CORS del backend ya permite `http://localhost:*` para el desarrollo web.
 
 ## Documentación
 
@@ -152,9 +155,8 @@ máquina.
   `auth` desde Flutter. El único punto que conoce la URL es `ApiService`, y la
   sesión se persiste con `SessionStore` (`SharedPreferences`).
 - **Backend:** contrato estable (`predict`, `history`, `health`, `auth`) con
-  `MOCK_INFERENCE=true` por defecto. La inferencia real (carga de `best.pt` y
-  Grad-CAM) y la autenticación JWT ya están implementadas: al dejar los pesos en
-  `MODEL_PATH`, el backend pasa a inferencia real sin cambiar el contrato HTTP.
+  inferencia real (carga de `best.pt` + Grad-CAM) y autenticación JWT. Los pesos
+  se colocan en `MODEL_PATH`; sin ellos el arranque falla con un mensaje claro.
 - **ML:** el pipeline comparativo está listo y los cinco modelos están
   entrenados y evaluados (`ml/evaluation/reports/`). Los `best.pt` ya se
   integraron localmente (excluidos de Git por tamaño) y el backend ejecuta la
