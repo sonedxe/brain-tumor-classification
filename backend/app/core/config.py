@@ -5,6 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -26,6 +27,13 @@ class Settings(BaseSettings):
     model_version: str = "mobilenetv3-v1"
     image_size: int = 224
     enable_gradcam: bool = True
+
+    @field_validator("model_path", "media_root", mode="after")
+    @classmethod
+    def _resolve_against_repo_root(cls, value: Path) -> Path:
+        """Resuelve rutas relativas (p. ej. MODEL_PATH en .env) contra la raiz
+        del repositorio, de modo que no dependan del directorio de ejecucion."""
+        return value if value.is_absolute() else (REPO_ROOT / value)
 
     mock_inference: bool = True
 
