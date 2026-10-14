@@ -1,8 +1,10 @@
 # Handoff: entrenamiento de los cinco modelos (Windows / CUDA 13.0)
 
 Guía para ejecutar el experimento comparativo en una máquina independiente.
-Backend y frontend **no se tocan**: siguen funcionando con `MOCK_INFERENCE=true`.
-La integración real vendrá después, cuando se elija el modelo ganador.
+Backend y frontend **no se tocan para entrenar**: siguen funcionando con
+`MOCK_INFERENCE=true`. La integración real (carga de `best.pt` y Grad-CAM) ya
+está implementada en `backend/app/services/` y se activa al dejar el checkpoint
+en la ruta de `MODEL_PATH`.
 
 Modelos: MobileNetV3, EfficientNetB0, ShuffleNetV2, ResNet18 (referencia), DenseNet121.
 Clases (`ml/configs/labels.json`, no modificar): `glioma`, `meningioma`, `pituitario`, `no_tumor`.
@@ -188,7 +190,7 @@ python ml/evaluation/gradcam.py --model <nombre> \
 ```
 
 El target layer correcto por arquitectura ya está en cada `ml/configs/<modelo>.yaml`
-(`conv_head`, `conv5`, `layer4[-1]`, `features.denseblock4`); el script lo resuelve
+(`features[-1]`, `conv5`, `layer4[-1]`, `features.denseblock4`); el script lo resuelve
 solo. Guarda el PNG y muestra la clase predicha.
 
 ## 10. Artefactos por arquitectura
@@ -226,4 +228,7 @@ ml/data/processed/splits.json              archivos y huella de la particion
 }
 ```
 
-Backend aún NO lo consume (sigue en mock). No modificar `backend/` ni `frontend/`.
+Backend ya consume este contrato: `backend/app/services/inference.py` lee
+`architecture`, `state_dict`, `classes`, `input_size` y `normalization` del
+checkpoint para montar el modelo. No hace falta tocar `backend/` ni `frontend/`;
+basta con dejar el `best.pt` en `MODEL_PATH` y poner `MOCK_INFERENCE=false`.

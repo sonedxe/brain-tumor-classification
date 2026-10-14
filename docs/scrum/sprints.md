@@ -32,16 +32,17 @@ porque coincide con el examen parcial.
 - **Items:** US-01, US-02.
 - **Incremento:** `ml/dataset/download.py`, `prepare.py`, `preprocessing.py`,
   `augmentation.py`; `labels.json` como fuente unica de clases.
-- **Nota:** la descarga de Kaggle requiere cuenta; el split es 70/15/15,
-  seed=42, estratificado.
+- **Nota:** la descarga de Kaggle requiere cuenta; solo `Training/` se divide
+  80/20 (train/val), seed=42, con una permutación global; `Testing/` es test.
 
 ## S2 - Entrenamiento
 
 - **Items:** US-03.
 - **Incremento:** `ml/training/{train,run_all,kfold,dataloader}.py`, cinco YAML
   en `ml/configs/`, `smoke_test.py` (7/7).
-- **Impedimento resuelto:** ShuffleNetV2 no existe en timm 1.x -> se construye
-  con torchvision con pesos ImageNet (ver `docs/notas-correccion-paper.md` §5).
+- **Impedimento resuelto:** ShuffleNetV2 no existe en timm 1.x -> se adopta
+  torchvision de forma uniforme para las cinco arquitecturas con pesos ImageNet
+  (ver `docs/notas-correccion-paper.md` §5).
 - **Riesgo abierto:** GPU destino (RTX 5070) exige `torch>=2.7`. Se documenta
   el handoff en `docs/ml-training-handoff.md`.
 
@@ -82,7 +83,7 @@ porque coincide con el examen parcial.
 - **Incremento:**
   - `HistoryViewModel` + `HistoryRepository` + `ApiService.fetchHistory`
     (elimina la deuda tecnica de S6; la vista ya no hace HTTP).
-  - `AuthViewModel`/`AuthService` y endpoints mock `POST /auth/register`,
+  - `AuthViewModel`/`AuthService` y endpoints `POST /auth/register`,
     `POST /auth/login` en el backend.
   - Documentos `docs/scrum/` y este backlog.
 - **Impedimento:** el peso del modelo no esta disponible (lo entrega el
@@ -97,6 +98,10 @@ porque coincide con el examen parcial.
   - Consolidar `docs/scrum/` y `docs/diseno-pantallas.md`.
   - Verificar extremo a extremo el consumo de endpoints desde Flutter contra el
     backend en modo mock.
+  - Cierre de deuda tecnica: inferencia real (carga de `best.pt`) y Grad-CAM en
+    el backend, autenticacion JWT real con sesion persistente, script de export
+    a TFLite (`ml/export_tflite.py`) y volcado de resultados a la tabla
+    (`ml/evaluation/fill_table.py`).
 - **Criterio de aceptacion:** `pytest` (backend), `flutter test` y
   `flutter analyze` en verde; demo del flujo subir imagen -> resultado ->
   historial; paper con metodologia redactada.

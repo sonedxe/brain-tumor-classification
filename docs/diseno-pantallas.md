@@ -64,7 +64,8 @@ ejemplo, la imagen ya elegida en "Analizar").
   funciona sin cuenta.
 - **Estados:** formulario (login o registro) / sesion activa.
 - **ViewModel:** `AuthViewModel`.
-- **Endpoints:** `POST /auth/register`, `POST /auth/login` (modo mock).
+- **Endpoints:** `POST /auth/register`, `POST /auth/login` (JWT real) y
+  `GET /auth/me`.
 
 ## Pantallas auxiliares
 

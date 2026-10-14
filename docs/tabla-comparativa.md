@@ -5,13 +5,15 @@ completan con los artefactos de entrenamiento y `ml/evaluation/metrics.py`.
 
 ## Tabla principal
 
+<!-- BEGIN:principal -->
 | Modelo | Params (M) | Tamano (MB) | Exactitud test | Macro F1 test | Recall tumor | ROC-AUC OVR | ms/imagen | Apto movil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| MobileNetV3 | | | | | | | | |
-| EfficientNetB0 | | | | | | | | |
-| ShuffleNetV2 | | | | | | | | |
-| DenseNet121 | | | | | | | | |
-| **ResNet18 (ref.)** | | | | | | | | |
+| MobileNetV3 |  |  |  |  |  |  |  |  |
+| EfficientNetB0 |  |  |  |  |  |  |  |  |
+| ShuffleNetV2 |  |  |  |  |  |  |  |  |
+| DenseNet121 |  |  |  |  |  |  |  |  |
+| **ResNet18 (ref.)** |  |  |  |  |  |  |  |  |
+<!-- END:principal -->
 
 ## Matrices de confusion
 
@@ -31,23 +33,27 @@ real: glioma
 La seleccion del checkpoint usa exclusivamente `val_accuracy`. Test se conserva
 aislado y se evalua una vez terminada la seleccion.
 
+<!-- BEGIN:checkpoint -->
 | Modelo | Mejor val_accuracy | Epoca |
 | --- | --- | --- |
-| MobileNetV3 | | |
-| EfficientNetB0 | | |
-| ShuffleNetV2 | | |
-| DenseNet121 | | |
-| ResNet18 | | |
+| MobileNetV3 | 93.75 % | 91 |
+| EfficientNetB0 | 94.55 % | 100 |
+| ShuffleNetV2 | 90.98 % | 98 |
+| DenseNet121 | 91.79 % | 93 |
+| ResNet18 | 90.98 % | 77 |
+<!-- END:checkpoint -->
 
 ## Interpretabilidad
 
+<!-- BEGIN:interpretabilidad -->
 | Modelo | Grad-CAM generado | Zona de activacion coherente con la lesion |
 | --- | --- | --- |
-| MobileNetV3 | | |
-| EfficientNetB0 | | |
-| ShuffleNetV2 | | |
-| DenseNet121 | | |
-| ResNet18 | | |
+| MobileNetV3 | No |  |
+| EfficientNetB0 | No |  |
+| ShuffleNetV2 | No |  |
+| DenseNet121 | No |  |
+| ResNet18 | No |  |
+<!-- END:interpretabilidad -->
 
 ## Criterio de seleccion
 

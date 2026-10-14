@@ -33,7 +33,7 @@ usa puntos de historia (Fibonacci).
 | US-12 | usuario movil | una app con arquitectura MVVM | mantener y testear el codigo | E5 | Must | 8 | `lib/{models,repositories,services,viewmodels,views}` |
 | US-13 | usuario movil | navegar entre pantallas consolidadas | usar la app sin friccion | E5 | Must | 5 | `AppShell`, 4 pantallas |
 | US-14 | usuario movil | ver el historial dentro de la app | revisar predicciones previas | E5 | Should | 3 | `HistoryViewModel` |
-| US-15 | usuario | una cuenta opcional | separar historiales y capturar evidencia | E5 | Could | 3 | `auth/register`, `auth/login` (mock) |
+| US-15 | usuario | una cuenta opcional | separar historiales y capturar evidencia | E5 | Could | 3 | `auth/*` (JWT real) |
 | US-16 | equipo | documentar la metodologia y el avance | cumplir la rubrica | E6 | Must | 5 | `docs/scrum/` |
 | US-17 | equipo | redactar el articulo cientifico | entregar el paper | E6 | Must | 8 | `docs/paper_laccei/` |
 
@@ -49,6 +49,6 @@ metodologico:
 
 ## Historias aplazadas (Won't for now)
 
-- Reentrenamiento on-device con TFLite (version futura).
-- Roles y permisos avanzados; el login sigue en modo mock.
-- Persistencia del token entre sesiones (`SharedPreferences`).
+- Reentrenamiento on-device con TFLite (version futura; el script de export ya
+  existe en `ml/export_tflite.py`).
+- Roles y permisos avanzados (el login ya es JWT real y la sesion persiste).

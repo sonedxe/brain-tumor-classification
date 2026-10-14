@@ -58,8 +58,8 @@ un aviso explícito de uso responsable.
   interpretabilidad.
 - **OE3.** Integrarla en un aplicativo móvil mediante comunicación
   cliente-servidor.
-- **OE4.** Validar el rendimiento con validación cruzada y compararlo con el
-  estado del arte.
+- **OE4.** Validar el rendimiento en un conjunto de prueba independiente y
+  compararlo con el estado del arte.
 
 ## II. Trabajo relacionado
 
@@ -73,47 +73,53 @@ trabajo se aparta de esa elección por una razón de cobertura de modelos (ver
 
 ### A. Dataset
 
-Se usa el conjunto público de 3.264 imágenes con cuatro clases nativas
-(*Saeedi et al.*), con la alternativa de 7.023 imágenes de Kaggle cuyas
-subcategorías de glioma se colapsan a `glioma`. La partición es única y
-compartida por los cinco modelos: **70 % entrenamiento / 15 % validación /
-15 % prueba, estratificada, `seed=42`**. El manifiesto queda en
-`ml/dataset/processed/splits.json` para garantizar reproducibilidad.
+Se usa el *Brain Tumor MRI Dataset* de Kaggle (Nickparvar): 5.600 imágenes de
+entrenamiento + 1.600 de prueba, con cuatro clases nativas. Las subcategorías
+de glioma se colapsan a `glioma`, de modo que las etiquetas coinciden con
+`ml/configs/labels.json`. Solo el conjunto `Training/` se divide, con una
+permutación global (`randperm`, `seed=42`), en **80 % entrenamiento / 20 %
+validación**; las 1.600 imágenes de `Testing/` se conservan íntegras como
+prueba. El manifiesto queda en `ml/data/processed/splits.json` para garantizar
+reproducibilidad.
 
 ### B. Preprocesamiento y aumento de datos
 
-Las imágenes se redimensionan a **256×256** y se convierten a RGB. La
-normalización se define **por modelo** en `ml/configs/<modelo>.yaml`: rango
-[-1, 1] (`mean=std=0.5`) para MobileNetV3, EfficientNetB0, ShuffleNetV2 y
-DenseNet121, y medias/desviaciones de ImageNet para ResNet18. El tensor de
-entrada de PyTorch es `3×256×256`. El aumento de datos usa
-`torchvision.transforms` (rotación, zoom, *flip* horizontal).
+Las imágenes se redimensionan a **224×224** y se convierten a RGB. Las cinco
+arquitecturas comparten la **normalización de ImageNet**
+(`mean=[0.485,0.456,0.406]`, `std=[0.229,0.224,0.225]`), declarada en
+`ml/configs/<modelo>.yaml`. El tensor de entrada de PyTorch es `3×224×224`. El
+aumento de datos usa `torchvision.transforms`: *flip* horizontal (`p=0.5`) y
+rotación de hasta 10°; validación y prueba usan solo *resize*, *tensor* y la
+misma normalización.
 
 ### C. Arquitecturas y protocolo de entrenamiento
 
-Cinco modelos, mismo *head* de 4 clases con `Dropout(0.3)`:
+Cinco modelos, todos provistos por **torchvision** con pesos ImageNet y la
+misma cabeza lineal de 4 clases:
 
-| Modelo | Fuente de pesos | Capa objetivo Grad-CAM |
+| Modelo | Arquitectura torchvision | Capa objetivo Grad-CAM |
 | --- | --- | --- |
-| MobileNetV3 | timm (`mobilenetv3_large_100`) | `conv_head` |
-| EfficientNetB0 | timm | `conv_head` |
-| ShuffleNetV2 | torchvision (`shufflenet_v2_x1_0`) | `conv5` |
-| DenseNet121 | timm | `features.denseblock4` |
-| ResNet18 (ref.) | timm | `layer4[-1]` |
+| MobileNetV3 | `mobilenet_v3_large` | `features[-1]` |
+| EfficientNetB0 | `efficientnet_b0` | `features[-1]` |
+| ShuffleNetV2 | `shufflenet_v2_x1_0` | `conv5` |
+| DenseNet121 | `densenet121` | `features.denseblock4` |
+| ResNet18 (ref.) | `resnet18` | `layer4[-1]` |
 
-Protocolo común: transfer learning con *backbone* congelado hasta la época 15 y
-*fine-tuning* completo después; AdamW (`lr=1e-4`, `wd=1e-4`), scheduler
-coseno, *early stopping* con paciencia 7, 30 épocas como máximo, `seed=42`.
-ShuffleNetV2 se construye con torchvision porque timm 1.x no lo incluye.
+Protocolo común (`ml/training/train.py`): *transfer learning* con el
+*backbone* congelado durante todo el entrenamiento —solo se optimiza la capa
+de salida nueva—, optimizador **Adam** (`lr=1e-3`), `CrossEntropyLoss`, batch
+64, hasta **100 épocas**, `seed=42`. La época se selecciona por *accuracy* de
+validación. Se usó torchvision de forma uniforme porque provee las cinco
+arquitecturas con pesos ImageNet equivalentes.
 
 ### D. Validación y métricas
 
-Validación cruzada estratificada de **5 folds** sobre el entrenamiento. Se
-reportan: exactitud, macro precisión/recall/F1, F1 ponderado, *recall* de la
-clase tumoral, especificidad de `no_tumor`, matriz de confusión, milisegundos
-por imagen, número de parámetros y tamaño del checkpoint. La interpretabilidad
-se evalúa cualitativamente con Grad-CAM sobre un conjunto fijo de imágenes de
-prueba.
+Validación *holdout* **80/20** sobre `Training/` (la partición de prueba quedó
+aislada). Se reportan: exactitud, macro precisión/recall/F1, F1 ponderado,
+*recall* de la clase tumoral, ROC-AUC multiclase (uno-contra-resto), matriz de
+confusión, milisegundos por imagen y número de parámetros. La
+interpretabilidad se evalúa cualitativamente con Grad-CAM sobre un conjunto
+fijo de imágenes de prueba.
 
 ### E. Integración móvil
 
@@ -121,9 +127,10 @@ El modelo ganador se expone como servicio REST (FastAPI, contrato JSON) y se
 persiste solo el **hash SHA-256** de cada imagen junto a etiqueta, confianza,
 versión del modelo y tiempo de inferencia. La app Flutter consume la API con
 arquitectura **MVVM** (Model–View–ViewModel) y ofrece cuatro pantallas
-consolidadas. Mientras el modelo definitivo no esté disponible, la API opera
-con `MOCK_INFERENCE=true` (predicción ficticia determinista) para no bloquear
-el desarrollo del cliente.
+consolidadas. La carga del modelo real (pesos torchvision + Grad-CAM) ya está
+implementada en el backend; `MOCK_INFERENCE=true` actúa solo como respaldo
+cuando no hay pesos en disco, para no bloquear el desarrollo del cliente. La
+cuenta es opcional y usa **JWT real** con sesión persistente en el dispositivo.
 
 ## IV. Resultados (pendiente)
 
@@ -165,6 +172,6 @@ y el repositorio están en `docs/notas-correccion-paper.md`.
 | III.A Dataset | `ml/dataset/`, `docs/ml-training-handoff.md` |
 | III.B Preprocesamiento | `ml/dataset/preprocessing.py`, `ml/configs/*.yaml` |
 | III.C Arquitecturas | `ml/configs/`, `ml/training/train.py` |
-| III.D Validación | `ml/training/kfold.py`, `ml/evaluation/metrics.py` |
+| III.D Validación | `ml/training/train.py`, `ml/evaluation/metrics.py` |
 | III.E Integración | `backend/`, `frontend/`, `docs/diseno-pantallas.md` |
 | IV Resultados | `docs/tabla-comparativa.md`, `ml/evaluation/reports/` |

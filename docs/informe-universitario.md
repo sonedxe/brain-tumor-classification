@@ -51,11 +51,12 @@ arquitectura cliente–servidor: una API REST en FastAPI que ejecuta la
 inferencia y persiste únicamente el *hash* de la imagen, y una aplicación
 **Flutter** construida bajo el patrón **MVVM**.
 
-El estado actual corresponde a la **semana 7**. El pipeline de entrenamiento,
+El estado actual corresponde a la **semana 8**. El pipeline de entrenamiento,
 la API, la aplicación móvil y su documentación están implementados y
-verificados; la integración de los pesos reales del modelo permanece en modo
-simulado (*mock*) hasta que el equipo de entrenamiento entregue los
-checkpoints, de modo que ninguna otra capa del sistema quedara bloqueada.
+verificados. La inferencia real (carga de pesos + Grad-CAM) ya está
+implementada en el backend: al colocar los checkpoints `best.pt` y desactivar
+`MOCK_INFERENCE`, el sistema pasa de modo simulado a real sin cambiar el
+contrato HTTP.
 
 **Palabras clave:** tumores cerebrales, aprendizaje profundo, CNN, Grad-CAM,
 MVVM, Flutter, FastAPI, Scrum.
@@ -124,7 +125,7 @@ Grad-CAM y comunicación cliente–servidor.
 | **OE1** | Identificar y evaluar arquitecturas CNN ligeras para la clasificación multiclase de tumores cerebrales en MRI. |
 | **OE2** | Seleccionar el modelo más adecuado según exactitud, tiempo de inferencia e interpretabilidad con Grad-CAM. |
 | **OE3** | Integrar el modelo seleccionado en un aplicativo móvil mediante comunicación cliente–servidor. |
-| **OE4** | Validar el rendimiento mediante validación cruzada y compararlo con el estado del arte. |
+| **OE4** | Validar el rendimiento en un conjunto de prueba independiente y compararlo con el estado del arte. |
 
 ## 5. Justificación
 
@@ -156,10 +157,10 @@ clases mediante la función *softmax*.
 
 El *transfer learning* reutiliza un modelo previamente entrenado en un dominio
 grande (por ejemplo, ImageNet) y lo adapta a uno nuevo y más pequeño. En lugar
-de entrenar desde cero con 3.264 imágenes —insuficientes para converger—, se
-congela el *backbone* y se entrena una cabeza nueva, tras lo cual se hace
-*fine-tuning*. Esto da una ventaja de convergencia y una comparación más justa
-entre arquitecturas.
+de entrenar desde cero con pocas imágenes —insuficientes para converger—, se
+congela el *backbone* preentrenado y se entrena únicamente una cabeza
+clasificadora nueva. Esto da una ventaja de convergencia y una comparación más
+justa entre arquitecturas.
 
 ### 6.3 Arquitecturas ligeras
 
@@ -171,9 +172,10 @@ entre arquitecturas.
 | **DenseNet121** | Conexiones densas entre capas | Reutilización de features |
 | **ResNet18** | Conexiones residuales (*skip connections*) | Referencia estándar |
 
-> Se eligió **timm** como biblioteca principal porque provee uniformemente los
-> modelos con pesos ImageNet. ShuffleNetV2, ausente en timm 1.x, se construye
-> con **torchvision** manteniendo pesos ImageNet equivalentes.
+> Se eligió **torchvision** como biblioteca principal porque provee las cinco
+> arquitecturas (`mobilenet_v3_large`, `efficientnet_b0`, `shufflenet_v2_x1_0`,
+> `densenet121` y `resnet18`) con pesos ImageNet equivalentes bajo una misma
+> API.
 
 ### 6.4 Grad-CAM
 
@@ -266,32 +268,36 @@ en paralelo y la integración real se limita a implementar la carga de pesos.
            │  nunca se envían datos                           ▼
            │  identificables del paciente         ┌─────────────────────────┐
            │                                      │  ml/                    │
-           │                                      │  PyTorch + timm         │
+           │                                      │  PyTorch + torchvision   │
            └─────────────────────────────────────►└─────────────────────────┘
                                                     SQLite (historial)
 ```
 
 ### 8.2 Capa de machine learning (`ml/`)
 
-- **Dataset:** conjunto público de 3.264 imágenes de 4 clases (Saeedi et al.),
-  con alternativa de 7.023 imágenes (Nickparvar) cuyas subcategorías de glioma
-  se colapsan a `glioma`.
-- **Partición única:** 70 % entrenamiento / 15 % validación / 15 % prueba,
-  estratificada, `seed=42`, con manifiesto en `ml/dataset/processed/splits.json`.
-- **Preprocesamiento:** redimensionado a 256×256, conversión a RGB y
-  normalización **por modelo** (rango [-1,1] o estadísticas de ImageNet según
-  el caso). Tensor de entrada `3×256×256`.
-- **Aumento de datos:** `torchvision.transforms` (rotación, zoom, *flip*).
-- **Entrenamiento:** *transfer learning* con *backbone* congelado hasta la
-  época 15 y *fine-tuning* posterior; optimizador **AdamW** (`lr=1e-4`,
-  `wd=1e-4`), scheduler coseno, *early stopping* con paciencia 7, 30 épocas,
-  semilla 42.
-- **Validación:** validación cruzada estratificada de 5 folds.
+- **Dataset:** *Brain Tumor MRI Dataset* de Kaggle (Nickparvar), 5.600
+  imágenes de entrenamiento + 1.600 de prueba, con las subcategorías de glioma
+  colapsadas a `glioma` según `ml/configs/labels.json`.
+- **Partición:** solo `Training/` se divide con una permutación global
+  (`randperm`, `seed=42`) en 80 % entrenamiento / 20 % validación; las 1.600
+  imágenes de `Testing/` se conservan íntegras como prueba. Manifiesto en
+  `ml/data/processed/splits.json`.
+- **Preprocesamiento:** redimensionado a 224×224, conversión a RGB y
+  normalización de ImageNet compartida por las cinco arquitecturas. Tensor de
+  entrada `3×224×224`.
+- **Aumento de datos:** `torchvision.transforms` (*flip* horizontal `p=0.5` y
+  rotación de 10°); validación y prueba sin aumentos.
+- **Entrenamiento:** *transfer learning* con el *backbone* congelado durante
+  todo el entrenamiento (solo se entrena la cabeza de 4 clases); optimizador
+  **Adam** (`lr=1e-3`), `CrossEntropyLoss`, batch 64, hasta 100 épocas, semilla
+  42. La época se selecciona por *accuracy* de validación.
+- **Validación:** *holdout* 80/20 sobre `Training/`; `Testing/` permanece
+  aislado y no selecciona checkpoints.
 - **Evaluación:** exactitud, macro precisión/recall/F1, F1 ponderado, *recall*
-  tumoral, especificidad de `no_tumor`, matriz de confusión, ms/imagen,
-  parámetros y tamaño del checkpoint.
+  tumoral, ROC-AUC multiclase (uno-contra-resto), matriz de confusión, ms/imagen
+  y número de parámetros.
 - **Interpretabilidad:** Grad-CAM con capa objetivo por arquitectura
-  (`conv_head`, `conv5`, `layer4[-1]`, `features.denseblock4`).
+  (`features[-1]`, `conv5`, `features.denseblock4`, `layer4[-1]`).
 
 ### 8.3 Capa de backend (`backend/`)
 
@@ -302,8 +308,9 @@ API REST en **FastAPI** con persistencia **SQLite** vía SQLAlchemy.
 | `POST` | `/api/v1/predict` | Clasifica una imagen MRI |
 | `GET` | `/api/v1/history` | Últimas predicciones |
 | `GET` | `/api/v1/health` | Estado del servicio y del modelo |
-| `POST` | `/api/v1/auth/register` | Registro de cuenta (modo mock) |
-| `POST` | `/api/v1/auth/login` | Inicio de sesión (modo mock) |
+| `POST` | `/api/v1/auth/register` | Registro de cuenta (JWT real) |
+| `POST` | `/api/v1/auth/login` | Inicio de sesión (JWT real) |
+| `GET` | `/api/v1/auth/me` | Usuario autenticado (valida el JWT) |
 
 Contrato de `POST /api/v1/predict`:
 
@@ -335,7 +342,7 @@ lib/
 ├── data/
 │   ├── models/      # DTOs: PredictionModel, HistoryEntry
 │   ├── repositories/# une modelo + servicio
-│   └── services/    # ApiService y AuthService (único punto HTTP)
+│   └── services/    # ApiService, AuthService y SessionStore (persistencia)
 ├── viewmodels/      # Prediction, History y Auth (estado + reglas)
 ├── views/           # Analizar, Historial, Info, Cuenta
 └── widgets/         # componentes de presentación
@@ -364,12 +371,12 @@ View --intención--> ViewModel --petición--> Repository --► Service --► API
 
 ### 8.5 Calidad y pruebas
 
-- **Backend:** 21 pruebas automatizadas (`pytest`) que cubren el contrato de
-  `predict`, el historial, la validación de archivos, la salud y la
-  autenticación.
-- **Frontend:** 17 pruebas (`flutter test`) sobre el parseo de DTOs, el
-  contrato de `ApiService` y la lógica de los ViewModels; `flutter analyze` sin
-  observaciones.
+- **Backend:** 37 pruebas automatizadas (`pytest`) que cubren el contrato de
+  `predict`, el historial, la validación de archivos, la salud, la
+  autenticación (JWT) y la inferencia real con un checkpoint de prueba.
+- **Frontend:** 23 pruebas (`flutter test`) sobre el parseo de DTOs, el
+  contrato de `ApiService`, la persistencia de sesión y la lógica de los
+  ViewModels; `flutter analyze` sin observaciones.
 - **ML:** `smoke_test.py` (7/7) valida el entorno, las etiquetas, la partición,
   el *dataloader* y las capas de Grad-CAM sin necesidad de GPU.
 
@@ -380,11 +387,12 @@ View --intención--> ViewModel --petición--> Repository --► Service --► API
 | Componente | Estado | Evidencia |
 | --- | --- | --- |
 | Pipeline de datos y entrenamiento | **Completo** | `ml/`, `smoke_test.py` 7/7 |
-| Pesos de los modelos | **Pendiente** | a cargo del equipo de entrenamiento |
-| Inferencia (IA) | **Simulada (mock)** | `MOCK_INFERENCE=true` |
-| API REST + persistencia | **Completo** | `backend/`, 21 pruebas |
-| Aplicación móvil (MVVM) | **Completo** | `frontend/`, 17 pruebas |
-| Interpretabilidad Grad-CAM | **Implementada**, pendiente de pesos | `ml/evaluation/gradcam.py` |
+| Pesos de los modelos | **Pendientes de entrega** (los `.pt` no se versionan) | `ml/models/<modelo>/metadata.json` |
+| Inferencia (IA) | **Implementada** (mock por defecto sin pesos) | `backend/app/services/inference.py` + pruebas con checkpoint |
+| API REST + persistencia | **Completo** | `backend/`, 37 pruebas |
+| Aplicación móvil (MVVM) | **Completo** | `frontend/`, 23 pruebas |
+| Autenticación | **JWT real + sesión persistente** | `backend/app/core/security.py`, `session_store.dart` |
+| Interpretabilidad Grad-CAM | **Implementada** en `ml/` y en el backend | `ml/evaluation/gradcam.py`, `backend/app/services/gradcam.py` |
 | Documentación (Scrum, paper) | **En avance** | `docs/scrum/`, `docs/paper_laccei/` |
 
 ### 9.2 Evidencia funcional (verificación de extremo a extremo)
@@ -393,8 +401,9 @@ Con el servidor corriendo en modo mock se comprobó:
 
 ```
 GET  /api/v1/health          → {"status":"ok_mock", ..., "classes":[...]}
-POST /api/v1/auth/register   → {"access_token":"mock-...", "name":"Equipo", ...}
-POST /api/v1/auth/login      → {"access_token":"mock-...", ...}
+POST /api/v1/auth/register   → {"access_token":"<jwt>", "name":"Equipo", "mock":false}
+POST /api/v1/auth/login      → {"access_token":"<jwt>", ...}
+GET  /api/v1/auth/me         → {"id":1, "name":"Equipo", "email":"..."}
 POST /api/v1/predict         → {"label":"pituitario", "confidence":0.407, ...}
 GET  /api/v1/history         → [ {id, label, confidence, model_version, ...} ]
 ```
@@ -422,11 +431,13 @@ significativo, porque reduce el riesgo de que la incertidumbre del modelo
 bloquee la entrega del producto.
 
 Se identificaron, además, decisiones de corrección relevantes que se
-documentaron para no incurrir en fallos silenciosos: la normalización depende
-del modelo (usar una sola rompe la convergencia de ResNet18), la capa objetivo
-de Grad-CAM cambia por arquitectura, y ShuffleNetV2 no existe en timm 1.x, por
-lo que se construye con torchvision. Todas estas desviaciones respecto del
-manuscrito base están registradas en `docs/notas-correccion-paper.md`.
+documentaron para no incurrir en fallos silenciosos: la capa objetivo de
+Grad-CAM cambia por arquitectura, el *backbone* se mantiene congelado y en modo
+de evaluación durante el entrenamiento (las capas *BatchNorm* congeladas no
+deben actualizar sus estadísticas), y se adoptó torchvision de forma uniforme
+para disponer de las cinco arquitecturas con pesos ImageNet equivalentes.
+Todas estas desviaciones respecto del manuscrito base están registradas en
+`docs/notas-correccion-paper.md`.
 
 En cuanto a la ingeniería de software, la detección de una violación de MVVM en
 la pantalla de historial (la vista hacía la petición HTTP directamente) derivó
@@ -448,17 +459,18 @@ calidad transversal.
 5. La metodología **Scrum** permitió avanzar en paralelo capas con distinta
    madurez y mantener el repositorio en verde sprint a sprint.
 6. La comparación de arquitecturas y su interpretabilidad con **Grad-CAM**
-   quedará completa cuando se integren los pesos; hoy el único punto simulado
-   del sistema es precisamente la inferencia.
+   quedarán completas al integrar los pesos; el código de inferencia y de
+   Grad-CAM ya está implementado y probado, y solo espera los checkpoints.
 
 ## 12. Recomendaciones y trabajo futuro
 
-- Integrar los checkpoints `best.pt` implementando `load()` y `_predict_real()`
-  en `backend/app/services/inference.py`, sin cambiar el contrato HTTP.
-- Generar y publicar los mapas Grad-CAM y completar la tabla comparativa.
-- Persistir el token de sesión con `SharedPreferences` y sustituir el módulo de
-  autenticación mock por uno real (JWT).
-- Explorar la conversión a **TFLite** para llevar el modelo al dispositivo.
+- Entregar y versionar los checkpoints `best.pt` del equipo de entrenamiento y
+  activar `MOCK_INFERENCE=false`; la carga real de pesos y el Grad-CAM ya están
+  implementados en `backend/app/services/`.
+- Generar y publicar los mapas Grad-CAM y completar la tabla comparativa con
+  `ml/evaluation/fill_table.py`.
+- Completar la conversión a **TFLite** para llevar el modelo al dispositivo
+  (`ml/export_tflite.py`).
 - Ampliar las pruebas de integración extremo a extremo y la cobertura de las
   pantallas con `flutter_test`.
 
@@ -485,7 +497,7 @@ calidad transversal.
 
 ```
 brain-tumor-classification/
-├── ml/            # dataset, entrenamiento, evaluación: PyTorch + timm
+├── ml/            # dataset, entrenamiento, evaluación: PyTorch + torchvision
 ├── backend/       # API FastAPI + SQLite + inferencia + Grad-CAM
 ├── frontend/      # App Flutter con arquitectura MVVM
 └── docs/          # scrum, paper, notas, flujograma, tabla comparativa

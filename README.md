@@ -7,7 +7,7 @@ Comparación de cuatro arquitecturas CNN ligeras (**MobileNetV3**, **EfficientNe
 **ShuffleNetV2**, **DenseNet121**) contra **ResNet18** como modelo de referencia,
 con evaluación de interpretabilidad mediante **Grad-CAM**.
 
-> Aviso: esta herramienta es de apoyo académico y **no constitute un dispositivo
+> Aviso: esta herramienta es de apoyo académico y **no constituye un dispositivo
 > médico ni sustituye el criterio de un radiólogo**.
 
 ## Arquitectura
@@ -80,11 +80,11 @@ field: file
 ```
 
 Otros endpoints: `GET /api/v1/health` (verifica que el modelo esté cargado) y
-`GET /api/v1/history` (historial de predicciones). La cuenta es opcional y hoy
-opera en modo mock: `POST /api/v1/auth/register` y `POST /api/v1/auth/login`
-devuelven `{ access_token, token_type, name, email, mock }`, que es lo que
-consume el `AuthViewModel`. Documentación interactiva en `/docs` cuando el
-servidor está corriendo.
+`GET /api/v1/history` (historial de predicciones). La cuenta es opcional y usa
+**JWT real**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login` (devuelven
+`{ access_token, token_type, name, email, expires_in }`) y `GET /api/v1/auth/me`
+(valida el token). El `AuthViewModel` persiste la sesión con `SharedPreferences`.
+Documentación interactiva en `/docs` cuando el servidor está corriendo.
 
 ## Puesta en marcha
 
@@ -112,6 +112,11 @@ uvicorn app.main:app --reload
 
 Con `MOCK_INFERENCE=true` (por defecto) `/predict` responde sin necesidad de
 pesos entrenados, lo que permite desarrollar el frontend de inmediato.
+
+Para **inferencia real** instala `backend/requirements-inference.txt` (torch +
+torchvision, desde el índice oficial de PyTorch según la variante CPU/CUDA),
+coloca el `best.pt` en la ruta de `MODEL_PATH` y pon `MOCK_INFERENCE=false`. En
+producción define además un `JWT_SECRET` propio.
 
 ### 3. Frontend
 
@@ -144,9 +149,12 @@ máquina.
 
 - **Frontend (MVVM):** capas `models`, `repositories`, `services`, `viewmodels`
   y `views`; cuatro pantallas consolidadas y consumo de `predict`, `history` y
-  `auth` desde Flutter. El único punto que conoce la URL es `ApiService`.
+  `auth` desde Flutter. El único punto que conoce la URL es `ApiService`, y la
+  sesión se persiste con `SessionStore` (`SharedPreferences`).
 - **Backend:** contrato estable (`predict`, `history`, `health`, `auth`) con
-  `MOCK_INFERENCE=true` por defecto.
-- **ML:** el pipeline comparativo está listo; los pesos reales los aporta el
-  compañero de entrenamiento. La integración de inferencia es el único punto
-  que queda en mock.
+  `MOCK_INFERENCE=true` por defecto. La inferencia real (carga de `best.pt` y
+  Grad-CAM) y la autenticación JWT ya están implementadas: al dejar los pesos en
+  `MODEL_PATH`, el backend pasa a inferencia real sin cambiar el contrato HTTP.
+- **ML:** el pipeline comparativo está listo y los cinco modelos ya se
+  entrenaron; falta que el equipo de entrenamiento entregue los `best.pt`
+  (excluidos de Git por tamaño) para completar la tabla comparativa y el paper.
