@@ -155,6 +155,7 @@ máquina.
   `MOCK_INFERENCE=true` por defecto. La inferencia real (carga de `best.pt` y
   Grad-CAM) y la autenticación JWT ya están implementadas: al dejar los pesos en
   `MODEL_PATH`, el backend pasa a inferencia real sin cambiar el contrato HTTP.
-- **ML:** el pipeline comparativo está listo y los cinco modelos ya se
-  entrenaron; falta que el equipo de entrenamiento entregue los `best.pt`
-  (excluidos de Git por tamaño) para completar la tabla comparativa y el paper.
+- **ML:** el pipeline comparativo está listo y los cinco modelos están
+  entrenados y evaluados (`ml/evaluation/reports/`). Los `best.pt` ya se
+  integraron localmente (excluidos de Git por tamaño) y el backend ejecuta la
+  inferencia real y el Grad-CAM sin cambiar el contrato HTTP.

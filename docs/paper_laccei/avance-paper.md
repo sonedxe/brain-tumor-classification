@@ -1,8 +1,9 @@
 # Avance del artículo científico (formato LACCEI)
 
-> Estado: **borrador v0.2**. Las secciones I–III están desarrolladas; los
-> resultados (IV–V) esperan los pesos entrenados. Todo número es placeholder y
-> se sustituye con la salida de `ml/evaluation/reports/`.
+> Estado: **borrador v0.3**. Secciones I–VI desarrolladas. Los resultados
+> provienen de `ml/evaluation/reports/` (extraídos de los notebooks de
+> entrenamiento con `extract_notebooks.py`); re-evaluar los checkpoints
+> desplegados es un control opcional de reproducibilidad.
 
 ## Clasificación de tumores cerebrales en imágenes de resonancia magnética
 ## mediante CNN ligeras y Grad-CAM
@@ -132,32 +133,69 @@ implementada en el backend; `MOCK_INFERENCE=true` actúa solo como respaldo
 cuando no hay pesos en disco, para no bloquear el desarrollo del cliente. La
 cuenta es opcional y usa **JWT real** con sesión persistente en el dispositivo.
 
-## IV. Resultados (pendiente)
+## IV. Resultados
 
-Se completará con la tabla comparativa de `docs/tabla-comparativa.md` y las
-matrices de confusión de `ml/evaluation/reports/`. Placeholders:
+Los cinco modelos se evaluaron una única vez sobre el conjunto de prueba
+(1.600 imágenes) tras seleccionar la época por *accuracy* de validación. La
+tabla siguiente resume el desempeño; la fuente completa y las matrices de
+confusión están en `docs/tabla-comparativa.md` y `ml/evaluation/reports/`.
 
-| Modelo | Params (M) | Exactitud | Macro F1 | Recall tumor | ms/imagen |
-| --- | --- | --- | --- | --- | --- |
-| MobileNetV3 | — | — | — | — | — |
-| EfficientNetB0 | — | — | — | — | — |
-| ShuffleNetV2 | — | — | — | — | — |
-| DenseNet121 | — | — | — | — | — |
-| ResNet18 (ref.) | — | — | — | — | — |
+| Modelo | Params (M) | Tamaño (MB) | Exactitud | Macro F1 | Recall tumor | ROC-AUC OVR |
+| --- | --- | --- | --- | --- | --- | --- |
+| DenseNet121 | 7.98 | 27.12 | **87.56 %** | **87.41 %** | **84.00 %** | 0.9677 |
+| MobileNetV3 | 5.48 | 16.25 | 87.19 % | 86.97 % | 83.08 % | 0.9710 |
+| EfficientNetB0 | 5.29 | 15.59 | 87.06 % | 86.73 % | 82.75 % | **0.9711** |
+| ResNet18 (ref.) | 11.69 | 42.72 | 85.69 % | 85.37 % | 81.42 % | 0.9644 |
+| ShuffleNetV2 | 2.28 | 4.96 | 82.56 % | 82.15 % | 77.08 % | 0.9539 |
 
-## V. Discusión (pendiente)
+Observaciones:
 
-Criterio de selección, en orden: exactitud y macro F1 sostenidos en los 5
-folds; *recall* de la clase tumoral (el falso negativo es el error más grave);
-tiempo de inferencia en el mismo hardware; tamaño del modelo y facilidad de
-conversión a TFLite; y calidad del mapa Grad-CAM.
+- Las cuatro CNN ligeras superan o igualan a la referencia ResNet18 en exactitud
+  y macro F1, con menos parámetros, salvo ShuffleNetV2.
+- **Glioma es la clase más difícil** para todos los modelos (recall 0.68–0.71);
+  *no tumor* es la más fácil (recall ≥ 0.99). El *recall* tumoral agregado está
+  dominado por la detección de glioma.
+- El Grad-CAM (`ml/evaluation/gradcam.py` y `backend/app/services/gradcam.py`)
+  genera mapas por arquitectura; la validación cualitativa de coherencia con la
+  lesión queda como revisión manual sobre un conjunto fijo de imágenes.
 
-## VI. Conclusiones (pendiente)
+## V. Discusión
 
-Se redactarán tras la selección del modelo. Contribución anticipada: un
-protocolo reproducible y homogéneo para comparar CNN ligeras, con
-interpretabilidad y despliegue móvil de extremo a extremo, y un aviso de uso
-responsable por tratarse de apoyo académico y no de un dispositivo médico.
+**Selección del modelo.** DenseNet121 obtiene las mejores métricas brutas
+(exactitud, macro F1 y *recall* tumoral), pero es el más pesado (~8 M de
+parámetros). MobileNetV3 y EfficientNetB0 están prácticamente empatados:
+MobileNetV3 gana por un margen mínimo en exactitud y macro F1, y EfficientNetB0
+en ROC-AUC y tamaño. Siguiendo el criterio declarado —exactitud/F1, *recall*
+tumoral, tiempo de inferencia, tamaño y facilidad de conversión a TFLite, y
+calidad del mapa de calor— **MobileNetV3** es la opción recomendada para el
+despliegue móvil: ofrece un desempeño casi idéntico al líder con un modelo
+menos de la mitad de pesado y diseñado explícitamente para dispositivos. La
+medición de milisegundos por imagen requiere el mismo hardware de destino y se
+deja como paso de validación.
+
+**Integración.** El backend carga el checkpoint (`best.pt`) y ejecuta la
+inferencia real y el Grad-CAM sin cambiar el contrato HTTP; el modo
+`MOCK_INFERENCE` queda solo como respaldo cuando no hay pesos. Así, la capa de
+modelo y la de software evolucionan de forma independiente.
+
+**Limitaciones.** Los resultados provienen de una única partición de prueba; no
+se realizó validación cruzada. Las métricas reportadas corresponden a la corrida
+documentada; re-evaluar el *checkpoint* desplegado con el mismo manifiesto es un
+control de reproducibilidad pendiente.
+
+## VI. Conclusiones
+
+1. Se compararon cinco arquitecturas bajo un protocolo homogéneo y reproducible
+   (224×224, normalización ImageNet, *transfer learning* con *backbone*
+   congelado, Adam, una partición fija con `seed=42`).
+2. Las CNN ligeras alcanzan una exactitud competitiva (hasta 87.6 %) sin
+   *fine-tuning* del *backbone*; MobileNetV3 ofrece el mejor equilibrio
+   exactitud/tamaño para el despliegue móvil.
+3. La decisión del modelo se interpreta con Grad-CAM por arquitectura, y el
+   sistema se integra de extremo a extremo (datos → modelo → API → app).
+4. Trabajo futuro: conversión a TFLite para inferencia *on-device*, validación
+   cruzada, un conjunto de prueba más amplio y la re-evaluación de los
+   *checkpoints* desplegados.
 
 ## Referencias
 

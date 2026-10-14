@@ -1,18 +1,27 @@
 # Tabla comparativa (OE2)
 
-Formato de resultados para las cinco arquitecturas. Los placeholders se
-completan con los artefactos de entrenamiento y `ml/evaluation/metrics.py`.
+Formato de resultados para las cinco arquitecturas. Las metricas de test y la
+tabla de validacion se generan con `ml/evaluation/fill_table.py` a partir de los
+artefactos de entrenamiento (`metadata.json`) y del resumen de evaluacion
+(`ml/evaluation/reports/comparison.json`).
+
+> **Trazabilidad.** La tabla de test usa las metricas extraidas de los notebooks
+> de entrenamiento (`ml/evaluation/extract_notebooks.py`), que es la corrida
+> documentada en el ANEXO comparativo. Los checkpoints `ml/models/*/best.pt`
+> pueden provenir de una corrida posterior con mayor exactitud de validacion;
+> re-evaluarlos con `python ml/training/run_all.py --skip-train` y volver a
+> correr `fill_table.py` es un paso **opcional** para alinear ambas.
 
 ## Tabla principal
 
 <!-- BEGIN:principal -->
 | Modelo | Params (M) | Tamano (MB) | Exactitud test | Macro F1 test | Recall tumor | ROC-AUC OVR | ms/imagen | Apto movil |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| MobileNetV3 |  |  |  |  |  |  |  |  |
-| EfficientNetB0 |  |  |  |  |  |  |  |  |
-| ShuffleNetV2 |  |  |  |  |  |  |  |  |
-| DenseNet121 |  |  |  |  |  |  |  |  |
-| **ResNet18 (ref.)** |  |  |  |  |  |  |  |  |
+| MobileNetV3 | 5.48 | 16.25 | 87.19 % | 86.97 % | 83.08 % | 0.9710 |  |  |
+| EfficientNetB0 | 5.29 | 15.59 | 87.06 % | 86.73 % | 82.75 % | 0.9711 |  |  |
+| ShuffleNetV2 | 2.28 | 4.96 | 82.56 % | 82.15 % | 77.08 % | 0.9539 |  |  |
+| DenseNet121 | 7.98 | 27.12 | 87.56 % | 87.41 % | 84.00 % | 0.9677 |  |  |
+| **ResNet18 (ref.)** | 11.69 | 42.72 | 85.69 % | 85.37 % | 81.42 % | 0.9644 |  |  |
 <!-- END:principal -->
 
 ## Matrices de confusion

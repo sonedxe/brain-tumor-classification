@@ -69,3 +69,26 @@ paciente: ni nombre, ni fecha de nacimiento, ni los tags DICOM de la imagen, ni
 el nombre original del archivo. Solo el hash SHA-256, que permite detectar
 imagenes repetidas sin revelar contenido clinico. Conviene mencionarlo
 explicitamente en la sustentacion.
+
+## 8. Trazabilidad de las metricas de test
+
+Los numeros de la tabla comparativa y del paper provienen de la corrida de los
+notebooks de entrenamiento (`ml/notebooks/*-checkpoint.ipynb`), la misma que
+documenta el ANEXO comparativo. Se extraen con
+`ml/evaluation/extract_notebooks.py` y se vuelcan con
+`ml/evaluation/fill_table.py`.
+
+Los checkpoints `ml/models/*/best.pt` que usa el backend pueden ser de una
+corrida posterior con mayor exactitud de validacion (p. ej. MobileNetV3 0.9375
+frente a 0.9313 en el notebook), de modo que sus metricas de test podrian
+diferir marginalmente. Alinear ambos exige re-evaluar los pesos desplegados con
+el mismo manifiesto:
+
+```bash
+python ml/training/run_all.py --skip-train
+python ml/evaluation/fill_table.py
+```
+
+Es un control de reproducibilidad opcional; conviene mencionarlo con
+transparencia si se pregunta en sustentacion, en lugar de presentar las
+metricas como si fuesen del checkpoint exacto que sirve la app.

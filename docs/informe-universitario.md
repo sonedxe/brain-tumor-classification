@@ -387,7 +387,7 @@ View --intención--> ViewModel --petición--> Repository --► Service --► API
 | Componente | Estado | Evidencia |
 | --- | --- | --- |
 | Pipeline de datos y entrenamiento | **Completo** | `ml/`, `smoke_test.py` 7/7 |
-| Pesos de los modelos | **Pendientes de entrega** (los `.pt` no se versionan) | `ml/models/<modelo>/metadata.json` |
+| Pesos de los modelos | **Recibidos** (no versionados por tamaño) | `ml/models/<modelo>/best.pt`, `metadata.json` |
 | Inferencia (IA) | **Implementada** (mock por defecto sin pesos) | `backend/app/services/inference.py` + pruebas con checkpoint |
 | API REST + persistencia | **Completo** | `backend/`, 37 pruebas |
 | Aplicación móvil (MVVM) | **Completo** | `frontend/`, 23 pruebas |
@@ -408,18 +408,29 @@ POST /api/v1/predict         → {"label":"pituitario", "confidence":0.407, ...}
 GET  /api/v1/history         → [ {id, label, confidence, model_version, ...} ]
 ```
 
-### 9.3 Resultados comparativos (pendiente)
+### 9.3 Resultados comparativos
 
-La tabla siguiente se completará con la salida de
-`ml/evaluation/reports/comparison.json` una vez que existan los pesos:
+Salida de `ml/evaluation/reports/comparison.json` (evaluación de test sobre
+1.600 imágenes; figuras y métricas por clase en `ml/evaluation/reports/`):
 
-| Modelo | Params (M) | Tamaño (MB) | Exactitud | Macro F1 | Recall tumor | ms/imagen | Apto móvil |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| MobileNetV3 | — | — | — | — | — | — | — |
-| EfficientNetB0 | — | — | — | — | — | — | — |
-| ShuffleNetV2 | — | — | — | — | — | — | — |
-| DenseNet121 | — | — | — | — | — | — | — |
-| **ResNet18 (ref.)** | — | — | — | — | — | — | — |
+| Modelo | Params (M) | Tamaño (MB) | Exactitud | Macro F1 | Recall tumor | ROC-AUC OVR | ms/imagen | Apto móvil |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DenseNet121 | 7.98 | 27.12 | **87.56 %** | **87.41 %** | **84.00 %** | 0.9677 | — | Media |
+| MobileNetV3 | 5.48 | 16.25 | 87.19 % | 86.97 % | 83.08 % | 0.9710 | — | **Alta** |
+| EfficientNetB0 | 5.29 | 15.59 | 87.06 % | 86.73 % | 82.75 % | **0.9711** | — | Alta |
+| ResNet18 (ref.) | 11.69 | 42.72 | 85.69 % | 85.37 % | 81.42 % | 0.9644 | — | Baja |
+| ShuffleNetV2 | 2.28 | 4.96 | 82.56 % | 82.15 % | 77.08 % | 0.9539 | — | **Alta** |
+
+Modelo recomendado para el despliegue móvil: **MobileNetV3** (mejor equilibrio
+exactitud/tamaño). Glioma es la clase más difícil para todos los modelos. Los
+`ms/imagen` requieren el hardware de destino y quedan como validación pendiente.
+
+> **Nota de trazabilidad:** estas métricas corresponden a la corrida de los
+> notebooks de entrenamiento (la documentada en el ANEXO comparativo). Los
+> checkpoints `ml/models/*/best.pt` pueden ser de una corrida posterior con
+> mayor exactitud de validación; re-evaluarlos con
+> `python ml/training/run_all.py --skip-train` y volver a correr
+> `ml/evaluation/fill_table.py` es un paso opcional.
 
 ## 10. Discusión
 
@@ -464,11 +475,12 @@ calidad transversal.
 
 ## 12. Recomendaciones y trabajo futuro
 
-- Entregar y versionar los checkpoints `best.pt` del equipo de entrenamiento y
-  activar `MOCK_INFERENCE=false`; la carga real de pesos y el Grad-CAM ya están
-  implementados en `backend/app/services/`.
-- Generar y publicar los mapas Grad-CAM y completar la tabla comparativa con
-  `ml/evaluation/fill_table.py`.
+- Los checkpoints `best.pt` ya se integraron (carga real y Grad-CAM en
+  `backend/app/services/`); re-evaluarlos sobre el conjunto de prueba para
+  alinear las métricas del paper con los pesos desplegados es un control
+  opcional de reproducibilidad.
+- Generar y publicar los mapas Grad-CAM con el modelo desplegado y completar la
+  tabla comparativa con `ml/evaluation/fill_table.py`.
 - Completar la conversión a **TFLite** para llevar el modelo al dispositivo
   (`ml/export_tflite.py`).
 - Ampliar las pruebas de integración extremo a extremo y la cobertura de las

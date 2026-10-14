@@ -56,20 +56,25 @@ def latest_run_dir() -> Path | None:
 
 
 def load_test_metrics(run_dir: Path | None) -> dict[str, dict]:
-    """Devuelve {modelo: metricas} desde comparison.json o los informes por modelo."""
-    if run_dir is None:
-        return {}
+    """Devuelve {modelo: metricas} desde comparison.json o los informes por modelo.
 
-    comparison = _read_json(run_dir / "comparison.json")
-    if comparison:
-        return comparison
+    Si no hay corrida de evaluacion, cae a `reports/comparison.json`, que
+    `extract_notebooks.py` genera a partir de los notebooks de entrenamiento.
+    """
+    if run_dir is not None:
+        comparison = _read_json(run_dir / "comparison.json")
+        if comparison:
+            return comparison
 
-    metrics: dict[str, dict] = {}
-    for model in MODELS:
-        report = _read_json(run_dir / f"{model}_metrics.json")
-        if report:
-            metrics[model] = report
-    return metrics
+        metrics: dict[str, dict] = {}
+        for model in MODELS:
+            report = _read_json(run_dir / f"{model}_metrics.json")
+            if report:
+                metrics[model] = report
+        if metrics:
+            return metrics
+
+    return _read_json(REPORTS_DIR / "comparison.json")
 
 
 def load_checkpoint_metadata(model: str) -> dict:
@@ -79,7 +84,11 @@ def load_checkpoint_metadata(model: str) -> dict:
 def has_gradcam(model: str) -> bool:
     if not REPORTS_DIR.is_dir():
         return False
-    return any(REPORTS_DIR.rglob(f"{model}*.png"))
+    for path in REPORTS_DIR.rglob(f"{model}*.png"):
+        name = path.name.lower()
+        if "gradcam" in name or "ejemplo" in name:
+            return True
+    return False
 
 
 def _fmt(value, *, percent: bool = False, decimals: int = 2) -> str:
@@ -182,6 +191,9 @@ def main() -> None:
     metrics = load_test_metrics(run_dir)
     text = TABLE_PATH.read_text(encoding="utf-8")
     for name, renderer in BLOCKS.items():
+        if name == "principal" and not metrics:
+            # Sin metricas no se vacia la tabla: se conserva lo que ya haya.
+            continue
         text = replace_block(text, name, renderer(metrics))
 
     if args.dry_run:
