@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 import '../models/prediction_model.dart';
 import '../services/api_service.dart';
@@ -15,7 +15,7 @@ class PredictionRepository {
 
   String get baseUrl => _apiService.baseUrl;
 
-  Future<PredictionModel> classify(File image) => _apiService.predict(image);
+  Future<PredictionModel> classify(XFile image) => _apiService.predict(image);
 
   Future<bool> isBackendReachable() => _apiService.checkHealth();
 

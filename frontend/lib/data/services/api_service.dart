@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart' show XFile;
 
 import '../../core/config.dart';
 import '../models/history_entry.dart';
@@ -22,7 +22,8 @@ class ApiException implements Exception {
 /// Cliente HTTP. Pertenece a la capa Model de MVVM.
 ///
 /// Es el unico punto del frontend que conoce la URL y el formato de la
-/// peticion.
+/// peticion. Usa `XFile` (no `dart:io`) para que la misma logica funcione en
+/// movil y en web/Chrome.
 class ApiService {
   ApiService({http.Client? client, String? baseUrl})
       : _client = client ?? http.Client(),
@@ -38,8 +39,7 @@ class ApiService {
   /// El backend devuelve `gradcam_path` como ruta relativa (`/static/...`) y
   /// monta los estaticos en la raiz, no bajo el prefijo de la API. Por eso se
   /// conservan solo esquema, host y puerto de `_baseUrl` y se descarta su ruta
-  /// (`/api/v1`); de lo contrario la imagen daria 404. No se usa base64 en la
-  /// respuesta para no inflar el JSON.
+  /// (`/api/v1`); de lo contrario la imagen daria 404.
   Uri resolveStaticPath(String path) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
       return Uri.parse(path);
@@ -88,9 +88,11 @@ class ApiService {
 
   Future<bool> checkHealth() async {
     try {
-      final response = await _client.get(_endpoint('health'));
+      final response = await _client
+          .get(_endpoint('health'))
+          .timeout(AppConfig.requestTimeout);
       return response.statusCode == 200;
-    } on SocketException {
+    } on http.ClientException {
       return false;
     } on TimeoutException {
       return false;
@@ -120,7 +122,7 @@ class ApiService {
         _extractDetail(response) ?? 'Error ${response.statusCode}',
         statusCode: response.statusCode,
       );
-    } on SocketException {
+    } on http.ClientException {
       throw const ApiException(
         'No hay conexion con el servidor. Verifica que el backend este '
         'corriendo y que API_BASE_URL apunte a el.',
@@ -130,36 +132,31 @@ class ApiService {
     }
   }
 
-  Future<PredictionModel> predict(File image) async {
-    if (!await image.exists()) {
-      throw const ApiException('No se encontro la imagen seleccionada');
-    }
-
-    final length = await image.length();
-    if (length > AppConfig.maxImageBytes) {
+  Future<PredictionModel> predict(XFile image) async {
+    final bytes = await image.readAsBytes();
+    if (bytes.length > AppConfig.maxImageBytes) {
       throw const ApiException('La imagen supera el limite de 10 MB');
     }
 
     try {
       final request = http.MultipartRequest('POST', _endpoint('predict'))
-        ..files.add(await http.MultipartFile.fromPath('file', image.path))
-        ..fields['client'] = 'flutter-android';
+        ..files.add(
+          http.MultipartFile.fromBytes('file', bytes, filename: image.name),
+        )
+        ..fields['client'] = 'flutter';
 
-      final streamed = await _client
-          .send(request)
-          .timeout(AppConfig.requestTimeout);
+      final streamed =
+          await _client.send(request).timeout(AppConfig.requestTimeout);
       final response = await http.Response.fromStream(streamed);
 
       return PredictionModel.fromJson(await _decode(response));
-    } on SocketException {
+    } on http.ClientException {
       throw const ApiException(
         'No hay conexion con el servidor. Verifica que el backend este '
         'corriendo y que API_BASE_URL apunte a el.',
       );
     } on TimeoutException {
       throw const ApiException('El servidor tardo demasiado en responder');
-    } on http.ClientException catch (error) {
-      throw ApiException('Error de red: ${error.message}');
     }
   }
 

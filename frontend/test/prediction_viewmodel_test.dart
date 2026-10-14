@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:brain_tumor_classification/data/models/prediction_model.dart';
 import 'package:brain_tumor_classification/data/repositories/prediction_repository.dart';
@@ -6,8 +6,8 @@ import 'package:brain_tumor_classification/data/services/api_service.dart';
 import 'package:brain_tumor_classification/viewmodels/prediction_viewmodel.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:http/testing.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 const _payload = {
   'label': 'meningioma',
@@ -31,11 +31,11 @@ PredictionViewModel _viewModelWith(MockClient client) {
   return PredictionViewModel(repository: PredictionRepository(apiService: service));
 }
 
-File _tempImage() {
-  final file = File('${Directory.systemTemp.path}/mri_test.png');
-  file.writeAsBytesSync(List<int>.filled(64, 7));
-  return file;
-}
+XFile _tempImage() => XFile.fromData(
+      Uint8List.fromList(List<int>.filled(64, 7)),
+      name: 'mri_test.png',
+      mimeType: 'image/png',
+    );
 
 void main() {
   group('PredictionModel', () {

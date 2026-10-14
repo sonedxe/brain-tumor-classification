@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -13,6 +11,7 @@ enum PredictionStatus { idle, loading, success, error }
 ///
 /// Las vistas observan este objeto con `Consumer` o `context.watch` y se
 /// redibujan. Ninguna vista hace HTTP ni decide que hacer tras un error.
+/// Trabaja con `XFile` para ser compatible con movil y web.
 class PredictionViewModel extends ChangeNotifier {
   PredictionViewModel({PredictionRepository? repository})
       : _repository = repository ?? PredictionRepository();
@@ -22,12 +21,12 @@ class PredictionViewModel extends ChangeNotifier {
 
   PredictionStatus _status = PredictionStatus.idle;
   PredictionModel? _prediction;
-  File? _selectedImage;
+  XFile? _selectedImage;
   String? _errorMessage;
 
   PredictionStatus get status => _status;
   PredictionModel? get prediction => _prediction;
-  File? get selectedImage => _selectedImage;
+  XFile? get selectedImage => _selectedImage;
   String? get errorMessage => _errorMessage;
   bool get isBusy => _status == PredictionStatus.loading;
   bool get hasResult => _status == PredictionStatus.success;
@@ -42,7 +41,7 @@ class PredictionViewModel extends ChangeNotifier {
     return _repository.resolveStaticPath(path);
   }
 
-  void selectImage(File file) {
+  void selectImage(XFile file) {
     _selectedImage = file;
     _prediction = null;
     _errorMessage = null;
@@ -60,7 +59,7 @@ class PredictionViewModel extends ChangeNotifier {
       if (picked == null) {
         return;
       }
-      selectImage(File(picked.path));
+      selectImage(picked);
     } on Exception catch (error) {
       _fail('No se pudo abrir la galeria: $error');
     }
@@ -76,7 +75,7 @@ class PredictionViewModel extends ChangeNotifier {
       if (picked == null) {
         return;
       }
-      selectImage(File(picked.path));
+      selectImage(picked);
     } on Exception catch (error) {
       _fail('No se pudo usar la camara: $error');
     }

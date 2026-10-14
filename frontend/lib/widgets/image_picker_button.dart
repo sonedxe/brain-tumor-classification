@@ -1,6 +1,6 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart' show XFile;
 
 import '../core/theme.dart';
 
@@ -18,7 +18,7 @@ class ImagePickerButton extends StatelessWidget {
     required this.onClear,
   });
 
-  final File? image;
+  final XFile? image;
   final bool isBusy;
   final VoidCallback onPickGallery;
   final VoidCallback onPickCamera;
@@ -66,7 +66,7 @@ class _Preview extends StatelessWidget {
     required this.isBusy,
   });
 
-  final File? image;
+  final XFile? image;
   final VoidCallback onClear;
   final bool isBusy;
 
@@ -95,16 +95,23 @@ class _Preview extends StatelessWidget {
               children: [
                 ColoredBox(
                   color: const Color(0xFF0B1620),
-                  child: Image.file(
-                    image!,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Center(
-                      child: Icon(
-                        Icons.broken_image_outlined,
-                        size: 48,
-                        color: Colors.white54,
-                      ),
-                    ),
+                  child: FutureBuilder<Uint8List>(
+                    future: image!.readAsBytes(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasData) {
+                        return Image.memory(snapshot.data!, fit: BoxFit.contain);
+                      }
+                      if (snapshot.hasError) {
+                        return const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            size: 48,
+                            color: Colors.white54,
+                          ),
+                        );
+                      }
+                      return const Center(child: CircularProgressIndicator());
+                    },
                   ),
                 ),
                 Positioned(
