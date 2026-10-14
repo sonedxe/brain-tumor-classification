@@ -32,6 +32,6 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     from app.db.base import Base
-    from app.models import prediction_log  # noqa: F401
+    from app.models import prediction_log, user  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

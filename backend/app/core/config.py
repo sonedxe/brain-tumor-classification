@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     model_path: Path = REPO_ROOT / "ml" / "models" / "mobilenetv3" / "best.pt"
     model_version: str = "mobilenetv3-v1"
-    image_size: int = 256
+    image_size: int = 224
     enable_gradcam: bool = True
 
     mock_inference: bool = True
@@ -33,6 +33,11 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 10 * 1024 * 1024
     media_root: Path = BACKEND_DIR / "media"
     static_url: str = "/static"
+
+    # Autenticacion (camino opcional). En produccion define JWT_SECRET propio.
+    jwt_secret: str = "dev-insecure-change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60 * 24 * 7  # 7 dias
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8080"]
 
