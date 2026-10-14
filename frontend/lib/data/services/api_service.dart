@@ -33,16 +33,20 @@ class ApiService {
 
   String get baseUrl => _baseUrl;
 
-  /// Resuelve una ruta relativa de `media/` contra la raiz del servidor.
+  /// Resuelve una ruta relativa de `media/` contra la **raiz del servidor**.
   ///
-  /// El backend devuelve `gradcam_path` como ruta relativa, y no como base64,
-  /// para no inflar la respuesta. Hay que anteponer el host aqui.
+  /// El backend devuelve `gradcam_path` como ruta relativa (`/static/...`) y
+  /// monta los estaticos en la raiz, no bajo el prefijo de la API. Por eso se
+  /// conservan solo esquema, host y puerto de `_baseUrl` y se descarta su ruta
+  /// (`/api/v1`); de lo contrario la imagen daria 404. No se usa base64 en la
+  /// respuesta para no inflar el JSON.
   Uri resolveStaticPath(String path) {
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return Uri.parse(path);
+    }
     final base = Uri.parse(_baseUrl);
-    final segments = <String>[
-      ...base.pathSegments.where((segment) => segment.isNotEmpty),
-      ...path.split('/').where((segment) => segment.isNotEmpty),
-    ];
+    final segments =
+        path.split('/').where((segment) => segment.isNotEmpty).toList();
     return base.replace(pathSegments: segments);
   }
 
