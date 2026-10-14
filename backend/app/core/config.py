@@ -35,8 +35,6 @@ class Settings(BaseSettings):
         del repositorio, de modo que no dependan del directorio de ejecucion."""
         return value if value.is_absolute() else (REPO_ROOT / value)
 
-    mock_inference: bool = True
-
     database_url: str = f"sqlite:///{BACKEND_DIR / 'db.sqlite3'}"
     max_upload_bytes: int = 10 * 1024 * 1024
     media_root: Path = BACKEND_DIR / "media"
@@ -48,6 +46,8 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 60 * 24 * 7  # 7 dias
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8080"]
+    # Origenes de desarrollo: Flutter web sirve en http://localhost:<puerto>.
+    cors_origin_regex: str = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
 
 
 @lru_cache

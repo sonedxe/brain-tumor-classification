@@ -24,7 +24,6 @@ def get_inference_service() -> InferenceService:
         model_path=settings.model_path,
         model_version=settings.model_version,
         enable_gradcam=settings.enable_gradcam,
-        mock=settings.mock_inference,
     )
 
 

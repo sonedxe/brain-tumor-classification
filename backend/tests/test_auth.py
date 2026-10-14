@@ -24,7 +24,6 @@ def test_register_returns_the_token_contract(client):
     assert body["token_type"] == "bearer"
     assert body["name"] == "Equipo UNMSM"
     assert body["email"] == "equipo@unmsm.edu.pe"
-    assert body["mock"] is False
     assert body["expires_in"] > 0
     # Un JWT tiene tres segmentos separados por punto.
     assert len(body["access_token"].split(".")) == 3

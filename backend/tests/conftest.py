@@ -3,15 +3,50 @@
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-os.environ.setdefault("MOCK_INFERENCE", "true")
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db.sqlite3")
 
 os.environ["MEDIA_ROOT"] = str(Path(__file__).resolve().parents[1] / "media")
+
+
+def _ensure_test_checkpoint() -> Path:
+    """Crea (una vez) un checkpoint torchvision minimo para las pruebas.
+
+    Pesos aleatorios: no se depende de los pesos entrenados reales (que no se
+    versionan), pero la ruta de inferencia es la misma que en produccion.
+    """
+    path = Path(tempfile.gettempdir()) / "btc_test_best.pt"
+    if not path.exists():
+        import torch
+
+        from app.core.constants import CLASSES
+        from app.services.model_factory import build_model
+
+        model = build_model("shufflenetv2", num_classes=len(CLASSES), pretrained=False)
+        torch.save(
+            {
+                "architecture": "shufflenetv2",
+                "state_dict": model.state_dict(),
+                "classes": list(CLASSES),
+                "class_to_idx": {name: i for i, name in enumerate(CLASSES)},
+                "input_size": 224,
+                "normalization": {
+                    "mode": "imagenet",
+                    "mean": [0.485, 0.456, 0.406],
+                    "std": [0.229, 0.224, 0.225],
+                },
+            },
+            path,
+        )
+    return path
+
+
+os.environ["MODEL_PATH"] = str(_ensure_test_checkpoint())
 
 from fastapi.testclient import TestClient  # noqa: E402
 

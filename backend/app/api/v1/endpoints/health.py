@@ -23,7 +23,7 @@ def health(
 
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        state = "ok_mock" if settings.mock_inference else "model_not_loaded"
+        state = "model_not_loaded"
     else:
         state = "ok"
 

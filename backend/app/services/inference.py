@@ -1,22 +1,15 @@
 """Servicio de inferencia (OE3).
 
-Modo real: carga `ml/models/<modelo>/best.pt` (checkpoint torchvision con las
-claves `architecture`, `state_dict`, `classes`, `normalization` e `input_size`
-que produce `ml/training/train.py`) y ejecuta la pasada hacia adelante.
+Carga `ml/models/<modelo>/best.pt` (checkpoint torchvision con las claves
+`architecture`, `state_dict`, `classes`, `normalization` e `input_size` que
+produce `ml/training/train.py`) y ejecuta la pasada hacia adelante.
 
-Modo mock (`MOCK_INFERENCE=true`): si no hay pesos en disco, devuelve una
-respuesta ficticia pero determinista, derivada del contenido de la imagen, para
-poder construir y probar el frontend sin esperar al entrenamiento.
-
-La carga real intenta primero el checkpoint; solo cae al mock cuando el archivo
-no existe y `MOCK_INFERENCE` esta activo. Con `MOCK_INFERENCE=false` y sin
-pesos, `load()` falla en voz alta en lugar de simular.
+No hay modo simulado: si no hay pesos, el servicio falla en voz alta. La ruta de
+`MODEL_PATH` y el modelo a usar se eligen por configuracion.
 """
 
 from __future__ import annotations
 
-import hashlib
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +19,10 @@ from PIL import Image
 from app.core.constants import CLASSES
 from app.services.gradcam import GradCamService
 
+import logging
+
 logger = logging.getLogger(__name__)
 
-_EPS = 1e-6
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
@@ -39,12 +33,10 @@ class InferenceService:
         model_path: Path | str | None = None,
         model_version: str = "unknown",
         enable_gradcam: bool = True,
-        mock: bool = True,
     ) -> None:
         self.model_path = Path(model_path) if model_path else None
         self.model_version = model_version
         self.enable_gradcam = enable_gradcam
-        self.mock = mock
         self._model: Any | None = None
         self._gradcam: GradCamService | None = None
         self._classes: tuple[str, ...] = tuple(CLASSES)
@@ -63,24 +55,14 @@ class InferenceService:
         return self._classes
 
     def load(self) -> None:
-        """Carga los pesos entrenados si existen.
-
-        Es el punto de integracion con `ml/`: al dejar `best.pt` en la ruta de
-        `MODEL_PATH`, el backend pasa de mock a inferencia real sin tocar el
-        contrato HTTP.
-        """
+        """Carga los pesos entrenados. Punto de integracion con `ml/`."""
         if self._model is not None:
             return
 
         if self.model_path is None or not self.model_path.exists():
-            if self.mock:
-                logger.warning(
-                    "Pesos no encontrados en %s; la inferencia seguira en modo mock",
-                    self.model_path,
-                )
-                return
             raise FileNotFoundError(
-                f"No hay pesos en {self.model_path} y MOCK_INFERENCE esta desactivado"
+                f"No hay pesos en {self.model_path}. Coloca el best.pt del modelo "
+                "elegido en la ruta de MODEL_PATH (ver docs/ml-training-handoff.md)."
             )
 
         import torch
@@ -131,11 +113,9 @@ class InferenceService:
         )
 
     def predict(self, image: np.ndarray) -> dict[str, Any]:
-        if self.is_ready:
-            return self._predict_real(image)
-        if self.mock:
-            return self._predict_mock(image)
-        raise RuntimeError("No hay pesos cargados y MOCK_INFERENCE esta desactivado")
+        if not self.is_ready:
+            raise RuntimeError("El modelo no esta cargado (llama a load() primero)")
+        return self._predict_real(image)
 
     def _to_tensor(self, image: np.ndarray, requires_grad: bool = False) -> Any:
         """Convierte HWC float32 0-255 a un tensor NCHW normalizado."""
@@ -186,26 +166,6 @@ class InferenceService:
             (self._input_size, self._input_size), Image.BILINEAR
         )
         return np.asarray(resized, dtype=np.float32)
-
-    def _predict_mock(self, image: np.ndarray) -> dict[str, Any]:
-        """Respuesta deterministica derivada del contenido de la imagen.
-
-        Determinista a proposito: dos cargas de la misma imagen devuelven
-        siempre el mismo resultado, de modo que las pruebas de la interfaz no
-        son intermitentes.
-        """
-        digest = hashlib.sha256(image.tobytes()).digest()
-        weights = np.frombuffer(digest, dtype=np.uint8, count=len(CLASSES)).astype(np.float64)
-        weights += _EPS
-        probabilities = weights / weights.sum()
-        index = int(probabilities.argmax())
-
-        return {
-            "label": CLASSES[index],
-            "confidence": float(probabilities[index]),
-            "probabilities": {name: float(p) for name, p in zip(CLASSES, probabilities)},
-            "gradcam_path": None,
-        }
 
     def gradcam(self, image: np.ndarray) -> str | None:
         if not self.enable_gradcam or self._gradcam is None or not self._gradcam.is_ready:

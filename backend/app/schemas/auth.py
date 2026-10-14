@@ -27,7 +27,6 @@ class AuthResponse(BaseModel):
     name: str
     email: str
     expires_in: int
-    mock: bool = False
 
     model_config = {
         "json_schema_extra": {
@@ -37,7 +36,6 @@ class AuthResponse(BaseModel):
                 "name": "Equipo UNMSM",
                 "email": "equipo@unmsm.edu.pe",
                 "expires_in": 604800,
-                "mock": False,
             }
         }
     }

@@ -32,7 +32,7 @@ def test_predict_returns_the_documented_contract(client, sample_image_bytes):
     assert "gradcam_path" in body
 
 
-def test_predict_is_deterministic_in_mock_mode(client, sample_image_bytes):
+def test_predict_is_deterministic(client, sample_image_bytes):
     first = client.post(
         "/api/v1/predict", files={"file": ("a.png", sample_image_bytes, "image/png")}
     ).json()

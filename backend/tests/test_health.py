@@ -21,14 +21,12 @@ def test_health_returns_the_four_classes(client):
     assert isinstance(body["model_ready"], bool)
 
 
-def test_health_reports_mock_mode_before_weights_exist(client):
+def test_health_reports_the_model_is_ready(client):
     response = client.get("/api/v1/health")
 
     body = response.json()
-    if not body["model_ready"]:
-        assert body["status"] == "ok_mock"
-    else:
-        assert body["status"] == "ok"
+    assert body["model_ready"] is True
+    assert body["status"] == "ok"
 
 
 def test_openapi_documents_the_predict_contract(client):

@@ -24,16 +24,8 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     init_db()
-    service = get_inference_service()
-    if service.is_ready:
-        logger.info("Modelo %s listo", settings.model_version)
-    else:
-        try:
-            service.load()
-            logger.info("Modelo %s cargado", settings.model_version)
-        except NotImplementedError:
-            state = "mock" if settings.mock_inference else "no disponible"
-            logger.warning("Pesos no cargados, inferencia en modo %s", state)
+    get_inference_service().load()
+    logger.info("Modelo %s listo", settings.model_version)
     yield
 
 
@@ -47,8 +39,9 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
+    allow_origin_regex=settings.cors_origin_regex,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 

@@ -6,8 +6,8 @@ la imagen Docker del backend no dependa de `ml/training` (que no se copia en el
 siguen declarados en `ml/configs/<modelo>.yaml`; cualquier cambio alli debe
 reflejarse aqui y en `docs/notas-correccion-paper.md` §4.
 
-`torch`/`torchvision` se importan dentro de las funciones (no en el modulo) para
-que el backend pueda arrancar en modo mock sin tener PyTorch instalado.
+`torch`/`torchvision` se importan dentro de las funciones (no en el modulo),
+que es la dependencia real de inferencia del backend.
 """
 
 from __future__ import annotations

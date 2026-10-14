@@ -1,9 +1,8 @@
-"""Pruebas de la inferencia real (sin mock).
+"""Pruebas de la inferencia real.
 
 Crean un checkpoint torchvision miniatura con pesos aleatorios y verifican que
 `InferenceService` lo carga, predice y genera un Grad-CAM valido, sin depender
-de los pesos entrenados reales (que no se versionan). Requieren PyTorch; si no
-esta instalado, se omiten para no romper la suite en modo mock.
+de los pesos entrenados reales (que no se versionan). Requieren PyTorch.
 """
 
 from __future__ import annotations
@@ -53,7 +52,7 @@ def image() -> np.ndarray:
 
 def test_loads_checkpoint_and_predicts(checkpoint_path, image):
     service = InferenceService(
-        model_path=checkpoint_path, model_version="shufflenetv2-test", mock=False
+        model_path=checkpoint_path, model_version="shufflenetv2-test"
     )
     service.load()
 
@@ -72,7 +71,7 @@ def test_generates_gradcam_png(checkpoint_path, image, tmp_path):
     from PIL import Image
 
     service = InferenceService(
-        model_path=checkpoint_path, model_version="shufflenetv2-test", mock=False
+        model_path=checkpoint_path, model_version="shufflenetv2-test"
     )
     service.load()
 
@@ -91,7 +90,7 @@ def test_generates_gradcam_png(checkpoint_path, image, tmp_path):
 
 def test_predict_is_deterministic_with_real_weights(checkpoint_path, image):
     service = InferenceService(
-        model_path=checkpoint_path, model_version="shufflenetv2-test", mock=False
+        model_path=checkpoint_path, model_version="shufflenetv2-test"
     )
     service.load()
     first = service.predict(image)
@@ -100,16 +99,16 @@ def test_predict_is_deterministic_with_real_weights(checkpoint_path, image):
     assert first["probabilities"] == second["probabilities"]
 
 
-def test_missing_weights_without_mock_raises(tmp_path):
+def test_missing_weights_raises(tmp_path):
     service = InferenceService(
-        model_path=tmp_path / "does-not-exist.pt", model_version="x", mock=False
+        model_path=tmp_path / "does-not-exist.pt", model_version="x"
     )
     with pytest.raises(FileNotFoundError):
         service.load()
 
 
-def test_predict_without_weights_and_without_mock_raises(image):
-    service = InferenceService(model_path=None, model_version="x", mock=False)
+def test_predict_without_weights_raises(image):
+    service = InferenceService(model_path=None, model_version="x")
     with pytest.raises(RuntimeError):
         service.predict(image)
 
