@@ -27,7 +27,7 @@ class BrainTumorApp extends StatelessWidget {
           create: (_) => PredictionViewModel(),
         ),
         ChangeNotifierProvider<AuthViewModel>(
-          create: (_) => AuthViewModel(),
+          create: (_) => AuthViewModel()..restoreSession(),
         ),
         ChangeNotifierProvider<HistoryViewModel>(
           create: (_) => HistoryViewModel()..load(),
