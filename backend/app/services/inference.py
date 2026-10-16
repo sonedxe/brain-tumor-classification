@@ -41,6 +41,7 @@ class InferenceService:
         self._gradcam: GradCamService | None = None
         self._classes: tuple[str, ...] = tuple(CLASSES)
         self._input_size: int = 224
+        self._architecture: str = "unknown"
         self._normalization: dict[str, list[float]] = {
             "mean": IMAGENET_MEAN,
             "std": IMAGENET_STD,
@@ -53,6 +54,10 @@ class InferenceService:
     @property
     def classes(self) -> tuple[str, ...]:
         return self._classes
+
+    @property
+    def architecture(self) -> str:
+        return self._architecture
 
     def load(self) -> None:
         """Carga los pesos entrenados. Punto de integracion con `ml/`."""
@@ -93,6 +98,7 @@ class InferenceService:
         self._model = model
         self._classes = classes
         self._input_size = int(checkpoint.get("input_size", 224))
+        self._architecture = architecture or "unknown"
         self._normalization = normalization
         if checkpoint.get("model_version"):
             self.model_version = checkpoint["model_version"]

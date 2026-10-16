@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-insecure-change-me"
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 60 * 24 * 7  # 7 dias
+    jwt_refresh_token_expire_days: int = 30
 
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8080"]
     # Origenes de desarrollo: Flutter web sirve en http://localhost:<puerto>.

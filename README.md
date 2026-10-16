@@ -79,12 +79,41 @@ field: file
 }
 ```
 
-Otros endpoints: `GET /api/v1/health` (verifica que el modelo esté cargado) y
-`GET /api/v1/history` (historial de predicciones). La cuenta es opcional y usa
-**JWT real**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login` (devuelven
-`{ access_token, token_type, name, email, expires_in }`) y `GET /api/v1/auth/me`
-(valida el token). El `AuthViewModel` persiste la sesión con `SharedPreferences`.
-Documentación interactiva en `/docs` cuando el servidor está corriendo.
+Otros endpoints: `GET /api/v1/health` (verifica que el modelo esté cargado),
+`GET /api/v1/history` (historial de predicciones),
+`GET /api/v1/predictions/{id}` (detalle con las cuatro probabilidades),
+`POST /api/v1/predictions/{id}/feedback` (revisión humana del resultado),
+`GET /api/v1/models` (los cinco modelos registrados, con sus métricas),
+`GET /api/v1/classes` (catálogo de clases) y
+`GET /api/v1/stats/summary` (conteo por clase y latencia media).
+
+La cuenta es opcional y usa **JWT real con sesiones revocables**:
+`POST /api/v1/auth/register`, `POST /api/v1/auth/login` (devuelven
+`{ access_token, token_type, name, email, expires_in, refresh_token }`),
+`POST /api/v1/auth/refresh` (rota el refresh token), `POST /api/v1/auth/logout`
+y `GET /api/v1/auth/me` (valida el token). El `AuthViewModel` persiste la sesión
+con `SharedPreferences`. Documentación interactiva en `/docs` cuando el servidor
+está corriendo.
+
+## Modelo de datos
+
+Ocho tablas normalizadas (SQLAlchemy sobre SQLite). Los catálogos se siembran al
+arrancar: las clases desde `ml/configs/labels.json` y los modelos desde las
+métricas de `ml/evaluation/reports/comparison.json`.
+
+| Tabla | Propósito |
+| --- | --- |
+| `users` | cuentas (rol, borrado lógico) |
+| `ml_models` | registro de los cinco modelos (arquitectura, versión, accuracy) |
+| `lesion_classes` | catálogo de las clases (`glioma`, `meningioma`, `pituitario`, `no_tumor`) |
+| `images` | imagen por SHA-256 (deduplicación), solo metadatos técnicos |
+| `predictions` | predicción: imagen + modelo + clase + confianza + Grad-CAM |
+| `prediction_scores` | las cuatro probabilidades de cada predicción |
+| `prediction_feedback` | revisión humana del resultado (human-in-the-loop) |
+| `auth_sessions` | sesiones con refresh token (hash, expiración, revocación) |
+
+El diagrama está en `docs/paper_laccei/figuras/figura-01-modelo-datos.png` y su
+fuente versionable en `docs/paper_laccei/figuras/modelo-datos.mmd`.
 
 ## Puesta en marcha
 
@@ -147,6 +176,8 @@ El CORS del backend ya permite `http://localhost:*` para el desarrollo web.
 - `docs/tabla-comparativa.md` — formato de la tabla de resultados del OE2.
 - `docs/flujograma.md` — fases del proyecto y su correspondencia con los
   objetivos específicos.
+- `docs/paper_laccei/figuras/` — figuras del artículo (modelo de datos,
+  endpoints y pantallas móviles) con su procedencia y cómo regenerarlas.
 
 ## Estado actual (nivel de madurez)
 
@@ -154,9 +185,11 @@ El CORS del backend ya permite `http://localhost:*` para el desarrollo web.
   y `views`; cuatro pantallas consolidadas y consumo de `predict`, `history` y
   `auth` desde Flutter. El único punto que conoce la URL es `ApiService`, y la
   sesión se persiste con `SessionStore` (`SharedPreferences`).
-- **Backend:** contrato estable (`predict`, `history`, `health`, `auth`) con
-  inferencia real (carga de `best.pt` + Grad-CAM) y autenticación JWT. Los pesos
-  se colocan en `MODEL_PATH`; sin ellos el arranque falla con un mensaje claro.
+- **Backend:** contrato estable (`predict`, `history`, `health`, `models`,
+  `classes`, `stats`, `auth`) con inferencia real (carga de `best.pt` +
+  Grad-CAM), autenticación JWT con sesiones revocables y un modelo de datos de
+  ocho tablas (ver «Modelo de datos»). Los pesos se colocan en `MODEL_PATH`; sin
+  ellos el arranque falla con un mensaje claro.
 - **ML:** el pipeline comparativo está listo y los cinco modelos están
   entrenados y evaluados (`ml/evaluation/reports/`). Los `best.pt` ya se
   integraron localmente (excluidos de Git por tamaño) y el backend ejecuta la

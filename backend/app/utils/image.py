@@ -20,3 +20,12 @@ def load_rgb_image(raw: bytes, size: int) -> np.ndarray:
         rgb = image.convert("RGB")
         resized = rgb.resize((size, size), Image.BILINEAR)
         return np.asarray(resized, dtype=np.float32)
+
+
+def read_image_meta(raw: bytes) -> tuple[int, int, str]:
+    """Devuelve (ancho, alto, formato) de la imagen original.
+
+    Solo metadatos tecnicos: nunca el nombre del archivo ni sus tags.
+    """
+    with Image.open(io.BytesIO(raw)) as image:
+        return image.width, image.height, (image.format or "UNKNOWN").upper()

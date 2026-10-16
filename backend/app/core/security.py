@@ -64,3 +64,13 @@ def decode_token(token: str) -> dict:
         return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except jwt.PyJWTError as exc:  # expirado, firma invalida, malformado...
         raise ValueError("Token invalido o expirado") from exc
+
+
+def new_refresh_token() -> str:
+    """Genera un refresh token opaco (no lleva payload; se valida contra la BD)."""
+    return secrets.token_urlsafe(48)
+
+
+def hash_refresh_token(token: str) -> str:
+    """Hash con el que se guarda el refresh token: nunca en claro."""
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

@@ -2,7 +2,8 @@
 
 Contrato que consume `frontend/lib/data/services/auth_service.dart`. La
 respuesta incluye siempre `access_token` y `name`, que son los dos campos que
-lee el `AuthViewModel`. `access_token` ahora es un JWT real firmado (HS256).
+lee el `AuthViewModel`. `access_token` es un JWT real firmado (HS256) y
+`refresh_token` un token opaco que se guarda hasheado en `auth_sessions`.
 """
 
 from __future__ import annotations
@@ -21,12 +22,21 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=6, max_length=128)
 
 
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=8)
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str = Field(min_length=8)
+
+
 class AuthResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     name: str
     email: str
     expires_in: int
+    refresh_token: str | None = None
 
     model_config = {
         "json_schema_extra": {
@@ -36,6 +46,7 @@ class AuthResponse(BaseModel):
                 "name": "Equipo UNMSM",
                 "email": "equipo@unmsm.edu.pe",
                 "expires_in": 604800,
+                "refresh_token": "2mR8...opaco...",
             }
         }
     }
@@ -47,3 +58,5 @@ class UserRead(BaseModel):
     id: int
     name: str
     email: str
+    role: str = "user"
+    is_active: bool = True

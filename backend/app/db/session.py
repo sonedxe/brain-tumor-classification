@@ -31,7 +31,13 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
+    """Crea las tablas y siembra los catalogos de referencia."""
+    import app.models  # noqa: F401  (registra todas las tablas en Base.metadata)
+
     from app.db.base import Base
-    from app.models import prediction_log, user  # noqa: F401
+    from app.db.seed import seed_reference_data
 
     Base.metadata.create_all(bind=engine)
+
+    with SessionLocal() as db:
+        seed_reference_data(db)

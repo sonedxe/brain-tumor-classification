@@ -1,0 +1,98 @@
+%% Modelo de datos real del backend (SQLAlchemy / SQLite).
+%% Fuente versionable del diagrama E-R del articulo.
+%% Render: mmdc -i modelo-datos.mmd -o modelo-datos.png -w 2400 -b white
+erDiagram
+    USERS {
+        int id PK
+        string email UK "unico, indexado"
+        string name "nombre visible"
+        string password_hash "PBKDF2-SHA256, nunca en claro"
+        string role "user | reviewer | admin"
+        bool is_active "borrado logico"
+        datetime created_at
+        datetime updated_at
+    }
+
+    ML_MODELS {
+        int id PK
+        string name UK "mobilenetv3, densenet121, ..."
+        string architecture "mobilenet_v3_large, resnet18, ..."
+        string version UK "mobilenetv3-v1"
+        string dataset
+        float num_parameters_m "millones de parametros"
+        float accuracy "accuracy de test"
+        float macro_f1
+        float roc_auc "ROC-AUC macro OvR"
+        bool is_active "modelo desplegado"
+        datetime created_at
+    }
+
+    LESION_CLASSES {
+        int id PK
+        string code UK "glioma | meningioma | pituitario | no_tumor"
+        string display_name
+        int index "posicion en la salida del modelo"
+        bool is_tumor
+        string description
+    }
+
+    IMAGES {
+        int id PK
+        string sha256 UK "hash de la imagen, deduplicacion"
+        int width
+        int height
+        string format "JPEG | PNG | ..."
+        int size_bytes
+        datetime created_at
+    }
+
+    PREDICTIONS {
+        int id PK
+        int image_id FK
+        int model_id FK
+        int predicted_class_id FK
+        int user_id FK "nullable: cuenta opcional"
+        float confidence
+        float inference_ms
+        string gradcam_path "ruta del mapa de calor"
+        string source "flutter | web | api"
+        datetime created_at
+    }
+
+    PREDICTION_SCORES {
+        int id PK
+        int prediction_id FK
+        int class_id FK
+        float probability "distribucion completa por clase"
+    }
+
+    PREDICTION_FEEDBACK {
+        int id PK
+        int prediction_id FK
+        int reviewer_id FK "nullable"
+        bool is_correct "validacion humana"
+        int corrected_class_id FK "nullable"
+        string comment
+        datetime created_at
+    }
+
+    AUTH_SESSIONS {
+        int id PK
+        int user_id FK
+        string refresh_token_hash "hash, nunca en claro"
+        string user_agent
+        datetime expires_at
+        datetime revoked_at "rotacion / logout"
+        datetime created_at
+    }
+
+    USERS |o--o{ PREDICTIONS : "realiza"
+    USERS ||--o{ AUTH_SESSIONS : "abre"
+    USERS |o--o{ PREDICTION_FEEDBACK : "revisa"
+    IMAGES ||--o{ PREDICTIONS : "es clasificada en"
+    ML_MODELS ||--o{ PREDICTIONS : "clasifica"
+    LESION_CLASSES ||--o{ PREDICTIONS : "etiqueta"
+    PREDICTIONS ||--o{ PREDICTION_SCORES : "desglosa en"
+    LESION_CLASSES ||--o{ PREDICTION_SCORES : "pondera"
+    PREDICTIONS ||--o{ PREDICTION_FEEDBACK : "recibe"
+    LESION_CLASSES |o--o{ PREDICTION_FEEDBACK : "corrige a"
