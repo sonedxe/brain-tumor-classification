@@ -7,7 +7,7 @@ diseno de pantallas consolidadas en Flutter".
 ## Navegacion general
 
 `AppShell` (`frontend/lib/views/app_shell.dart`) concentra la navegacion con un
-`NavigationBar` de cuatro destinos. Las pantallas se mantienen vivas con un
+`NavigationBar` de cinco destinos. Las pantallas se mantienen vivas con un
 `IndexedStack`, de modo que no se pierde el estado al cambiar de pestana (por
 ejemplo, la imagen ya elegida en "Analizar").
 
@@ -19,7 +19,7 @@ ejemplo, la imagen ya elegida en "Analizar").
 │            (cuerpo de la vista)          │
 │                                          │
 ├──────────────────────────────────────────┤
-│ Analizar | Historial | Info | Cuenta      │
+│ Analizar | Historial | Panel | Info | Cuenta │
 └──────────────────────────────────────────┘
 ```
 
@@ -46,18 +46,30 @@ ejemplo, la imagen ya elegida en "Analizar").
   - `success` vacio — mensaje "Aun no hay predicciones".
   - `error` — mensaje + boton "Reintentar".
   - Todos los estados admiten pull-to-refresh.
-- **ViewModel:** `HistoryViewModel`.
+  - Tocar una tarjeta abre `PredictionDetailView` (`GET /predictions/{id}` con
+    las 4 probabilidades, Grad-CAM y feedback humano).
+- **ViewModel:** `HistoryViewModel` + `DetailViewModel`.
 - **Nota MVVM:** la vista NO hace HTTP ni parsea JSON; eso ocurre en
-  `HistoryRepository`/`ApiService`.
+  `HistoryRepository`/`DetailRepository`/`ApiService`.
 
-## 3. Info (InfoView)
+## 3. Panel (StatsView) — nuevo
+
+- **Archivo:** `lib/views/stats_view.dart`
+- **Proposito:** dashboard de uso (`GET /stats/summary`): KPIs (predicciones,
+  imágenes únicas, latencia/confianza medias, revisiones, modelos) y barras de
+  distribución por clase.
+- **ViewModel:** `StatsViewModel` + `StatsRepository`.
+- **Valor para la sustentación:** es la pantalla más vistosa para mostrar avance
+  sin cambiar el contrato del backend.
+
+## 4. Info (InfoView)
 
 - **Archivo:** `lib/views/info_view.dart`
 - **Proposito:** contenido educativo de las cuatro clases (RF-06).
 - **Estado:** estatico, sin backend. Solo lectura + tema.
 - **ViewModel:** ninguno (no hay estado que cambiar).
 
-## 4. Cuenta (AuthView)
+## 5. Cuenta (AuthView)
 
 - **Archivo:** `lib/views/auth_view.dart`
 - **Proposito:** login/registro opcional (RF-01/02/03). La clasificacion
@@ -72,6 +84,9 @@ ejemplo, la imagen ya elegida en "Analizar").
 - **ResultView** (`lib/views/result_view.dart`): detalle del resultado,
   reutilizable si mas adelante se abre desde el historial. Comparte el
   `PredictionViewModel`, no duplica estado.
+- **PredictionDetailView** (`lib/views/prediction_detail_view.dart`): detalle
+  real desde el historial (`GET /predictions/{id}`) + feedback humano
+  (`POST /predictions/{id}/feedback` con correcto/corregir, clase y comentario).
 
 ## Correspondencia MVVM
 

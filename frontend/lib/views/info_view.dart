@@ -48,8 +48,9 @@ class InfoView extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       children: [
         const SectionHeader(
+          icon: Icons.menu_book_outlined,
           title: 'Las cuatro clases',
-          subtitle: 'Que significa cada resultado del modelo',
+          subtitle: 'Qué significa cada resultado del modelo',
         ),
         const SizedBox(height: AppSpacing.md),
         ..._items.map(

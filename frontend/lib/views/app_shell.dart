@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/theme.dart';
+import '../data/services/connectivity_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'auth_view.dart';
 import 'history_view.dart';
 import 'home_view.dart';
 import 'info_view.dart';
+import 'stats_view.dart';
 
 /// Shell con navegacion inferior: de 1 pantalla a 4 sin cambiar la estetica.
 class AppShell extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AppShellState extends State<AppShell> {
   static const _tabs = [
     (title: 'Analizar', subtitle: 'Sube una MRI y obten un diagnostico'),
     (title: 'Historial', subtitle: 'Tus analisis recientes'),
+    (title: 'Panel', subtitle: 'Uso y distribución por clase'),
     (title: 'Info', subtitle: 'Aprende sobre cada clase'),
     (title: 'Cuenta', subtitle: 'Perfil opcional'),
   ];
@@ -33,10 +36,15 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 74,
+        toolbarHeight: 76,
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
+          decoration: const BoxDecoration(
+            gradient: AppTheme.brandGradient,
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(AppRadius.md),
+            ),
+          ),
         ),
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -47,10 +55,12 @@ class _AppShellState extends State<AppShell> {
             Text(
               tab.subtitle,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.82),
+                color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 12.5,
                 fontWeight: FontWeight.w400,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -61,13 +71,21 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _index,
-        children: const [
-          HomeViewBody(),
-          HistoryView(),
-          InfoView(),
-          AuthView(),
+      body: Column(
+        children: [
+          const _OfflineBanner(),
+          Expanded(
+            child: IndexedStack(
+              index: _index,
+              children: const [
+                HomeViewBody(),
+                HistoryView(),
+                StatsView(),
+                InfoView(),
+                AuthView(),
+              ],
+            ),
+          ),
         ],
       ),
       bottomNavigationBar: DecoratedBox(
@@ -90,6 +108,11 @@ class _AppShellState extends State<AppShell> {
               label: 'Historial',
             ),
             NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Panel',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
               selectedIcon: Icon(Icons.menu_book),
               label: 'Info',
@@ -102,6 +125,56 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Banner persistente cuando no hay conexión: deja claro qué modelo se usa.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: ConnectivityService.instance,
+      builder: (context, _) {
+        if (ConnectivityService.instance.isOnline) {
+          return const SizedBox.shrink();
+        }
+        return Material(
+          color: AppTheme.warningSoft,
+          child: SafeArea(
+            top: false,
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.lg,
+                vertical: AppSpacing.sm,
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.cloud_off_outlined,
+                    size: 18,
+                    color: AppTheme.warning,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Expanded(
+                    child: Text(
+                      'Sin conexión · modelo local ONNX · se sincronizará al reconectar',
+                      style: TextStyle(
+                        color: AppTheme.warning,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

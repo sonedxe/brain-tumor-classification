@@ -25,7 +25,7 @@ usa puntos de historia (Fibonacci).
 | US-04 | investigador | medir metricas, confusion y tiempos | seleccionar el mejor modelo | E2 | Must | 5 | `ml/evaluation/metrics.py` |
 | US-05 | investigador | generar Grad-CAM por modelo | sustentar la interpretabilidad | E3 | Should | 3 | `ml/evaluation/gradcam.py` |
 | US-06 | usuario | subir una imagen MRI y recibir un diagnostico | apoyar la revision medica | E4 | Must | 8 | `POST /predict` |
-| US-07 | usuario | que la API responda sin pesos entrenados | desarrollar la app en paralelo | E4 | Must | 3 | `MOCK_INFERENCE` |
+| US-07 | usuario | que la API respondiera sin pesos entrenados (mock histórico S4-S7, hoy eliminado: inferencia real obligatoria) | desarrollar la app en paralelo | E4 | Must | 3 | Done (histórico) |
 | US-08 | usuario | consultar el historial de predicciones | auditar el uso de la app | E4 | Should | 3 | `GET /history` |
 | US-09 | usuario | que no se guarden datos identificables | cuidar la privacidad | E4 | Must | 2 | hash SHA-256 |
 | US-10 | usuario movil | seleccionar imagen de galeria o camara | analizarla desde el celular | E5 | Must | 5 | `ImagePickerButton` |
@@ -45,7 +45,7 @@ metodologico:
 
 1. US-16 (Scrum) y US-17 (paper) — evidencia documental del examen.
 2. US-12/US-13/US-14 — consolidar MVVM y pantallas.
-3. US-06/US-08 completados contra el backend en modo mock.
+3. US-06/US-08 completados contra el backend con inferencia real.
 
 ## Historias aplazadas (Won't for now)
 

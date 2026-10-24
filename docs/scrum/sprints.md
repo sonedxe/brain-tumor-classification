@@ -12,7 +12,7 @@ sprints).
 | S1 | Dataset y clases canonicas | 7 | 7 | Cerrado |
 | S2 | Protocolo de entrenamiento comparativo | 8 | 8 | Cerrado |
 | S3 | Metricas y evaluacion | 5 | 5 | Cerrado |
-| S4 | API FastAPI + modo mock | 11 | 11 | Cerrado |
+| S4 | API FastAPI + inferencia (mock histórico, hoy real) | 11 | 11 | Cerrado |
 | S5 | App Flutter: captura y resultado (MVVM) | 10 | 10 | Cerrado |
 | S6 | Navegacion, historial e info (pantallas) | 8 | 8 | Cerrado |
 | S7 | Cuenta opcional, MVVM del historial, documentos | 11 | 11 | Cerrado |
@@ -57,8 +57,10 @@ porque coincide con el examen parcial.
 
 - **Items:** US-06, US-07, US-08, US-09.
 - **Incremento:** API FastAPI con `POST /predict`, `GET /history`,
-  `GET /health`, persistencia SQLite (solo hash) y `MOCK_INFERENCE`.
-- **Decision:** la inferencia real depende S3/S2; el mock desbloquea S5.
+  `GET /health`, persistencia SQLite (solo hash) e inferencia real
+  (en S4 se usó un mock temporal `MOCK_INFERENCE` para no bloquear S5;
+  eliminado al integrar los `best.pt`).
+- **Decision:** la inferencia real dependía de S3/S2; el mock histórico desbloqueó S5.
 - **Pruebas:** `backend/tests/` en verde.
 
 ## S5 - App (captura y resultado)
@@ -86,8 +88,9 @@ porque coincide con el examen parcial.
   - `AuthViewModel`/`AuthService` y endpoints `POST /auth/register`,
     `POST /auth/login` en el backend.
   - Documentos `docs/scrum/` y este backlog.
-- **Impedimento:** el peso del modelo no esta disponible (lo entrega el
-  companero de ML). Se mitiga con `MOCK_INFERENCE`.
+- **Impedimento (histórico, resuelto):** el peso del modelo no estaba disponible
+  (lo entregaba el compañero de ML). Se mitigó temporalmente con un mock;
+  hoy la inferencia es real con los cinco `best.pt`.
 
 ## S8 - En curso (examen parcial)
 
@@ -97,7 +100,7 @@ porque coincide con el examen parcial.
   - US-17 (avance del paper en `docs/paper_laccei/`).
   - Consolidar `docs/scrum/` y `docs/diseno-pantallas.md`.
   - Verificar extremo a extremo el consumo de endpoints desde Flutter contra el
-    backend en modo mock.
+    backend con inferencia real.
   - Cierre de deuda tecnica: inferencia real (carga de `best.pt`) y Grad-CAM en
     el backend, autenticacion JWT real con sesion persistente, script de export
     a TFLite (`ml/export_tflite.py`) y volcado de resultados a la tabla
@@ -105,5 +108,4 @@ porque coincide con el examen parcial.
 - **Criterio de aceptacion:** `pytest` (backend), `flutter test` y
   `flutter analyze` en verde; demo del flujo subir imagen -> resultado ->
   historial; paper con metodologia redactada.
-- **Riesgo:** la sustentacion es sobre madurez, no sobre resultados finales; se
-  comunica con transparencia que el modelo esta en modo mock.
+- **Riesgo:** la sustentacion es sobre madurez, no sobre resultados finales.

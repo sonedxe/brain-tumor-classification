@@ -1,8 +1,6 @@
 """Exporta un checkpoint de ml/ a ONNX y, si hay stack TensorFlow, a TFLite.
 
-Pensado para la version on-device (misma red que sirve el backend). No se
-ejecuta en el desarrollo en modo mock: necesita los pesos entrenados y, para el
-paso final, TensorFlow.
+Requiere los pesos entrenados y, para el paso final, TensorFlow.
 
 Cadena de conversion:
     best.pt  --(torch.onnx.export)-->  <modelo>.onnx

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme.dart';
-import '../../core/formatting.dart';
-import '../../data/models/prediction_model.dart';
+import '../core/theme.dart';
+import '../core/formatting.dart';
+import '../data/models/prediction_model.dart';
+import 'app_states.dart';
 
 /// Tarjeta con el resultado de la clasificacion.
 ///
@@ -37,7 +38,7 @@ class ResultCard extends StatelessWidget {
           _GradCamCard(url: gradcamUrl!),
         ],
         const SizedBox(height: AppSpacing.lg),
-        const _Disclaimer(),
+        const AppDisclaimer(),
       ],
     );
   }
@@ -159,7 +160,7 @@ class _ConfidenceGauge extends StatelessWidget {
     final clamped = value.clamp(0.0, 1.0);
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: clamped),
-      duration: const Duration(milliseconds: 900),
+      duration: AppMotion.slow,
       curve: Curves.easeOutCubic,
       builder: (context, animated, _) {
         return SizedBox(
@@ -315,7 +316,7 @@ class _ProbabilityBar extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs + 2),
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
-            duration: const Duration(milliseconds: 800),
+            duration: AppMotion.normal,
             curve: Curves.easeOutCubic,
             builder: (context, animated, _) => ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.pill),
@@ -406,36 +407,3 @@ class _GradCamCard extends StatelessWidget {
   }
 }
 
-class _Disclaimer extends StatelessWidget {
-  const _Disclaimer();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      decoration: BoxDecoration(
-        color: AppTheme.warningSoft,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: const Color(0xFFF0C98A)),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, size: 20, color: AppTheme.warning),
-          SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Text(
-              'Herramienta de apoyo academico. No es un dispositivo medico y '
-              'no sustituye el criterio de un radiologo.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: AppTheme.warning,
-                height: 1.4,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

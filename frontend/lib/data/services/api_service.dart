@@ -6,14 +6,19 @@ import 'package:image_picker/image_picker.dart' show XFile;
 
 import '../../core/config.dart';
 import '../models/history_entry.dart';
+import '../models/prediction_detail.dart';
 import '../models/prediction_model.dart';
+import '../models/stats_summary.dart';
 
 /// Error de dominio, ya normalizado para que la vista lo muestre en espanol.
 class ApiException implements Exception {
-  const ApiException(this.message, {this.statusCode});
+  const ApiException(this.message, {this.statusCode, this.isNetwork = false});
 
   final String message;
   final int? statusCode;
+
+  /// `true` cuando el fallo es de conexión: habilita el fallback offline.
+  final bool isNetwork;
 
   @override
   String toString() => 'ApiException($statusCode): $message';
@@ -54,7 +59,7 @@ class ApiService {
     final base = Uri.parse(_baseUrl);
     final segments = <String>[
       ...base.pathSegments.where((segment) => segment.isNotEmpty),
-      path,
+      ...path.split('/').where((segment) => segment.isNotEmpty),
     ];
     return base.replace(pathSegments: segments);
   }
@@ -126,9 +131,13 @@ class ApiService {
       throw const ApiException(
         'No hay conexion con el servidor. Verifica que el backend este '
         'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
       );
     } on TimeoutException {
-      throw const ApiException('El servidor tardo demasiado en responder');
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
     }
   }
 
@@ -154,9 +163,90 @@ class ApiService {
       throw const ApiException(
         'No hay conexion con el servidor. Verifica que el backend este '
         'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
       );
     } on TimeoutException {
-      throw const ApiException('El servidor tardo demasiado en responder');
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
+    }
+  }
+
+  /// `GET /stats/summary` — conteos por clase y latencias medias.
+  Future<StatsSummary> fetchStatsSummary() async {
+    try {
+      final response =
+          await _client.get(_endpoint('stats/summary')).timeout(AppConfig.requestTimeout);
+      return StatsSummary.fromJson(await _decode(response));
+    } on http.ClientException {
+      throw const ApiException(
+        'No hay conexion con el servidor. Verifica que el backend este '
+        'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
+    }
+  }
+
+  /// `GET /predictions/{id}` — detalle con las 4 probabilidades y Grad-CAM.
+  Future<PredictionDetail> fetchPredictionDetail(int id) async {
+    try {
+      final response = await _client
+          .get(_endpoint('predictions/$id'))
+          .timeout(AppConfig.requestTimeout);
+      return PredictionDetail.fromJson(await _decode(response));
+    } on http.ClientException {
+      throw const ApiException(
+        'No hay conexion con el servidor. Verifica que el backend este '
+        'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
+    }
+  }
+
+  /// `POST /predictions/{id}/feedback` — revision humana (human-in-the-loop).
+  Future<void> sendFeedback({
+    required int predictionId,
+    required bool isCorrect,
+    String? correctedLabel,
+    String? comment,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'is_correct': isCorrect,
+        // ignore: use_null_aware_elements
+        if (correctedLabel != null) 'corrected_label': correctedLabel,
+        if (comment?.isNotEmpty ?? false) 'comment': comment,
+      };
+      final response = await _client
+          .post(
+            _endpoint('predictions/$predictionId/feedback'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(AppConfig.requestTimeout);
+      await _decode(response);
+    } on http.ClientException {
+      throw const ApiException(
+        'No hay conexion con el servidor. Verifica que el backend este '
+        'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
     }
   }
 

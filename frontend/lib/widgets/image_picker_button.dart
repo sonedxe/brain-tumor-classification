@@ -73,19 +73,13 @@ class _Preview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+      duration: AppMotion.fast,
       height: 280,
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppTheme.border),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryDark.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        boxShadow: AppShadow.card,
       ),
       clipBehavior: Clip.antiAlias,
       child: image == null

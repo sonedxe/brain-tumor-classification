@@ -6,13 +6,14 @@ Cliente móvil con arquitectura **MVVM** que consume la API del backend.
 
 ```
 lib/
-├── core/            # config (URL de la API) y tema
+├── core/            # config (URL de la API), tema y contrato del modelo
 ├── data/
-│   ├── models/      # DTOs (PredictionModel, HistoryEntry)
+│   ├── local/       # almacén offline (caché, cola de sync, cuentas)
+│   ├── models/      # DTOs (PredictionModel, HistoryEntry, StatsSummary, PredictionDetail)
 │   ├── repositories/# une modelo + servicio
-│   └── services/    # ApiService y AuthService (único punto HTTP)
-├── viewmodels/      # estado + reglas (Prediction, History, Auth)
-├── views/           # pantallas (Analizar, Historial, Info, Cuenta)
+│   └── services/    # HTTP, ONNX local, conectividad y sincronización
+├── viewmodels/      # estado + reglas (Prediction, History, Stats, Detail, Auth)
+├── views/           # pantallas (Analizar, Historial, Panel, Info, Cuenta, Detalle)
 └── widgets/         # componentes de presentación reutilizables
 ```
 
@@ -22,8 +23,20 @@ inyectable, lo que permite probarlo con un `MockClient`.
 
 ## Pantallas consolidadas
 
-`AppShell` reúne cuatro pantallas con un `NavigationBar` y `IndexedStack`:
-Analizar, Historial, Info y Cuenta. Ver `docs/diseno-pantallas.md` en la raíz.
+`AppShell` reúne cinco pantallas con un `NavigationBar` y `IndexedStack`:
+Analizar, Historial, Panel, Info y Cuenta. El Historial abre `PredictionDetailView`
+(detalle + feedback humano). Ver `docs/diseno-pantallas.md` en la raíz.
+
+## Modo offline
+
+`assets/models/model.onnx` es una copia del `best.pt` del backend. Si no hay
+conexión (o el backend no responde), `OfflineService` clasifica con
+`OnnxPredictor` y guarda la imagen y el resultado en `LocalDB`; al reconectar,
+`SyncService` reenvía la cola a la API. Regenerar el modelo:
+
+```bash
+backend/.venv/bin/python ml/export_mobile_onnx.py --model mobilenetv3 --verify
+```
 
 ## Ejecutar
 

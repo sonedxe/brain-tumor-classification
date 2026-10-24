@@ -162,13 +162,62 @@ flutter run -d chrome --dart-define=API_BASE_URL=http://localhost:8000/api/v1
 
 El CORS del backend ya permite `http://localhost:*` para el desarrollo web.
 
+## Modo offline
+
+La app funciona sin conexión con **el mismo modelo del backend**. El `best.pt`
+activo se exporta a ONNX y se empaqueta como asset:
+
+```bash
+# Requiere onnx + onnxscript en el venv del backend
+backend/.venv/bin/python ml/export_mobile_onnx.py --model mobilenetv3 --verify
+# -> frontend/assets/models/model.onnx (unico archivo, ~16 MB)
+```
+
+Comportamiento sin red:
+
+- **Predicción:** inferencia local (ONNX Runtime) con el mismo preprocesamiento
+  (224x224, normalización ImageNet) y las mismas 4 clases de
+  `ml/configs/labels.json`. El Grad-CAM no se genera offline.
+- **Historial:** muestra la caché de `GET /history` más las predicciones
+  pendientes, marcadas como «Pendiente de sincronizar».
+- **Registro y login:** se resuelven contra el almacén local (contraseña
+  cifrada en base64 solo para poder replicar el alta; es una demo académica).
+- **Sincronización:** al recuperar la conexión se registran las cuentas
+  pendientes, se envían los feedbacks en cola y se reenvían las imágenes
+  pendientes a `POST /predict`; el backend vuelve a inferir y guarda el
+  registro definitivo.
+
+Prueba manual: activa el modo avión, clasifica una imagen (usa el banner «Sin
+conexión · modelo local ONNX»), revisa el historial y desactiva el modo avión
+para ver la sincronización.
+
+## Generar el APK
+
+```bash
+cd frontend
+# Universal (un solo archivo para cualquier dispositivo)
+flutter build apk --release
+
+# Variantes por ABI (instalación más liviana)
+flutter build apk --release --split-per-abi
+```
+
+Salida en `frontend/build/app/outputs/flutter-apk/`:
+`app-release.apk` (universal) y `app-arm64-v8a-release.apk` (recomendado para
+dispositivos modernos). Para apuntar a un backend desplegado:
+
+```bash
+flutter build apk --release \
+  --dart-define=API_BASE_URL=https://<tu-backend>.onrender.com/api/v1
+```
+
 ## Documentación
 
 - `docs/informe-universitario.md` — informe universitario completo del proyecto.
 - `docs/scrum/` — aplicación de Scrum: roles, ceremonias, product backlog,
   historial de sprints y Definition of Done.
-- `docs/diseno-pantallas.md` — las cuatro pantallas consolidadas y su
-  correspondencia con MVVM.
+- `docs/diseno-pantallas.md` — las pantallas consolidadas (Analizar, Historial,
+  Panel, Info, Cuenta y el detalle) y su correspondencia con MVVM.
 - `docs/paper_laccei/avance-paper.md` — avance del artículo científico (LACCEI).
 - `docs/ml-training-handoff.md` — guía para entrenar los cinco modelos.
 - `docs/notas-correccion-paper.md` — desviaciones entre el repositorio y el

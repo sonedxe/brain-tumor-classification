@@ -386,7 +386,7 @@ View --intención--> ViewModel --petición--> Repository --► Service --► API
 | --- | --- | --- |
 | Pipeline de datos y entrenamiento | **Completo** | `ml/`, `smoke_test.py` 7/7 |
 | Pesos de los modelos | **Recibidos** (no versionados por tamaño) | `ml/models/<modelo>/best.pt`, `metadata.json` |
-| Inferencia (IA) | **Implementada** (mock por defecto sin pesos) | `backend/app/services/inference.py` + pruebas con checkpoint |
+| Inferencia (IA) | **Implementada (real, con `best.pt`)** | `backend/app/services/inference.py` + pruebas con checkpoint |
 | API REST + persistencia | **Completo** | `backend/`, 37 pruebas |
 | Aplicación móvil (MVVM) | **Completo** | `frontend/`, 23 pruebas |
 | Autenticación | **JWT real + sesión persistente** | `backend/app/core/security.py`, `session_store.dart` |
@@ -461,15 +461,15 @@ calidad transversal.
 2. La aplicación móvil aplica correctamente el patrón **MVVM**: la lógica de
    estado vive en los ViewModels, el acceso a red en los servicios, y las
    vistas solo presentan y capturan intenciones.
-3. El backend expone un **contrato REST estable** y consume la inferencia de
-   forma intercambiable (mock o real) sin afectar al cliente.
+3. El backend expone un **contrato REST estable** y consume la inferencia real
+   (carga de `best.pt` + Grad-CAM) sin afectar al cliente.
 4. Se respeta la privacidad de los pacientes al persistir solo el *hash* de la
    imagen.
 5. La metodología **Scrum** permitió avanzar en paralelo capas con distinta
    madurez y mantener el repositorio en verde sprint a sprint.
 6. La comparación de arquitecturas y su interpretabilidad con **Grad-CAM**
-   quedarán completas al integrar los pesos; el código de inferencia y de
-   Grad-CAM ya está implementado y probado, y solo espera los checkpoints.
+   están completas con los cinco `best.pt` integrados; el código de inferencia y
+   de Grad-CAM está implementado, probado y en producción.
 
 ## 12. Recomendaciones y trabajo futuro
 

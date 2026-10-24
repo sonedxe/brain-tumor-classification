@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../data/models/prediction_model.dart';
 import '../data/repositories/prediction_repository.dart';
 import '../data/services/api_service.dart';
+import '../data/services/connectivity_service.dart';
+import '../data/services/offline_service.dart';
 
 enum PredictionStatus { idle, loading, success, error }
 
@@ -12,17 +14,30 @@ enum PredictionStatus { idle, loading, success, error }
 /// Las vistas observan este objeto con `Consumer` o `context.watch` y se
 /// redibujan. Ninguna vista hace HTTP ni decide que hacer tras un error.
 /// Trabaja con `XFile` para ser compatible con movil y web.
+///
+/// Si no hay conexión (o el backend no responde), clasifica con el modelo
+/// ONNX local y deja la predicción en cola para sincronizarla.
 class PredictionViewModel extends ChangeNotifier {
-  PredictionViewModel({PredictionRepository? repository})
-      : _repository = repository ?? PredictionRepository();
+  PredictionViewModel({
+    PredictionRepository? repository,
+    OfflineService? offlineService,
+    ConnectivityService? connectivity,
+  })  : _repository = repository ?? PredictionRepository(),
+        _offlineService = offlineService,
+        _connectivity = connectivity ?? ConnectivityService.instance {
+    _connectivity.addListener(notifyListeners);
+  }
 
   final PredictionRepository _repository;
+  final OfflineService? _offlineService;
+  final ConnectivityService _connectivity;
   final ImagePicker _picker = ImagePicker();
 
   PredictionStatus _status = PredictionStatus.idle;
   PredictionModel? _prediction;
   XFile? _selectedImage;
   String? _errorMessage;
+  bool _usedOffline = false;
 
   PredictionStatus get status => _status;
   PredictionModel? get prediction => _prediction;
@@ -30,6 +45,8 @@ class PredictionViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isBusy => _status == PredictionStatus.loading;
   bool get hasResult => _status == PredictionStatus.success;
+  bool get isOffline => _connectivity.isOffline;
+  bool get usedOffline => _usedOffline;
   bool get canClassify =>
       _selectedImage != null && _status != PredictionStatus.loading;
 
@@ -45,6 +62,7 @@ class PredictionViewModel extends ChangeNotifier {
     _selectedImage = file;
     _prediction = null;
     _errorMessage = null;
+    _usedOffline = false;
     _status = PredictionStatus.idle;
     notifyListeners();
   }
@@ -92,13 +110,42 @@ class PredictionViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
+    if (_connectivity.isOffline) {
+      await _classifyOffline(image);
+      return;
+    }
+
     try {
       _prediction = await _repository.classify(image);
+      _usedOffline = false;
       _status = PredictionStatus.success;
     } on ApiException catch (error) {
+      if (error.isNetwork && _offlineService != null) {
+        await _classifyOffline(image);
+        return;
+      }
       _fail(error.message);
     } on Exception catch (error) {
       _fail('Ocurrio un error inesperado: $error');
+    }
+    notifyListeners();
+  }
+
+  Future<void> _classifyOffline(XFile image) async {
+    if (_offlineService == null) {
+      _fail('El modo sin conexión no está disponible en este dispositivo.');
+      return;
+    }
+    try {
+      _prediction = await _offlineService.classify(image);
+      _usedOffline = true;
+      _status = PredictionStatus.success;
+    } on OfflineException catch (error) {
+      _fail(error.message);
+    } on UnsupportedError catch (error) {
+      _fail(error.message ?? 'Inferencia offline no soportada');
+    } on Exception catch (error) {
+      _fail('No se pudo clasificar sin conexión: $error');
     }
     notifyListeners();
   }
@@ -108,6 +155,7 @@ class PredictionViewModel extends ChangeNotifier {
     _prediction = null;
     _selectedImage = null;
     _errorMessage = null;
+    _usedOffline = false;
     notifyListeners();
   }
 
@@ -119,7 +167,9 @@ class PredictionViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    _connectivity.removeListener(notifyListeners);
     _repository.dispose();
+    _offlineService?.dispose();
     super.dispose();
   }
 }

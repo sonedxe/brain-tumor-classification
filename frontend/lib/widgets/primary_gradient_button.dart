@@ -6,8 +6,7 @@ import '../core/theme.dart';
 ///
 /// Reutiliza el estilo del tema para la forma y el alto, y solo anade el
 /// gradiente cuando esta habilitado. Se deshabilita con [onPressed] en null.
-class PrimaryGradientButton extends StatelessWidget {
-  const PrimaryGradientButton({
+class PrimaryGradientButton extends StatelessWidget {  const PrimaryGradientButton({
     super.key,
     required this.label,
     required this.onPressed,
@@ -28,15 +27,7 @@ class PrimaryGradientButton extends StatelessWidget {
         gradient: enabled ? AppTheme.brandGradient : null,
         color: enabled ? null : const Color(0xFFB7C4D4),
         borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: enabled
-            ? [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.28),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ]
-            : null,
+        boxShadow: enabled ? AppShadow.button : null,
       ),
       child: ElevatedButton(
         onPressed: enabled ? onPressed : null,

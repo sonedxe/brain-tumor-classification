@@ -11,9 +11,14 @@ dependencies:
   flutter:
     sdk: flutter
 
+  connectivity_plus: ^6.1.0
+  crypto: ^3.0.5
   cupertino_icons: ^1.0.8
   http: ^1.2.2
+  image: ^4.3.0
   image_picker: ^1.1.2
+  onnxruntime: ^1.4.1
+  path_provider: ^2.1.4
   provider: ^6.1.2
   shared_preferences: ^2.3.2
 
@@ -25,3 +30,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # Copia ONNX del best.pt activo (mismo modelo que sirve el backend).
+    # Se regenera con: python ml/export_tflite.py --model mobilenetv3 \
+    #   --output-dir frontend/assets/models --onnx-only
+    - assets/models/model.onnx

@@ -12,6 +12,8 @@ class HistoryEntry {
     required this.inferenceMs,
     required this.createdAt,
     this.imageHash = '',
+    this.pendingSync = false,
+    this.localId = '',
   });
 
   final int id;
@@ -21,6 +23,12 @@ class HistoryEntry {
   final double inferenceMs;
   final String createdAt;
   final String imageHash;
+
+  /// `true` si se clasificó sin conexión y aún no llegó al backend.
+  final bool pendingSync;
+
+  /// Identificador local de una predicción offline (vacío si es del servidor).
+  final String localId;
 
   bool get isTumor => label != 'no_tumor';
 
@@ -35,6 +43,8 @@ class HistoryEntry {
       inferenceMs: (json['inference_ms'] as num?)?.toDouble() ?? 0.0,
       createdAt: json['created_at'] as String? ?? '',
       imageHash: json['image_hash'] as String? ?? '',
+      pendingSync: json['pending_sync'] as bool? ?? false,
+      localId: json['local_id'] as String? ?? '',
     );
   }
 
@@ -46,5 +56,7 @@ class HistoryEntry {
         'inference_ms': inferenceMs,
         'created_at': createdAt,
         'image_hash': imageHash,
+        'pending_sync': pendingSync,
+        'local_id': localId,
       };
 }

@@ -18,10 +18,40 @@ class AppSpacing {
 class AppRadius {
   const AppRadius._();
 
+  static const double xs = 8;
   static const double sm = 10;
   static const double md = 16;
   static const double lg = 22;
   static const double pill = 999;
+}
+
+/// Sombras y duraciones compartidas para una elevación consistente.
+class AppShadow {
+  const AppShadow._();
+
+  static List<BoxShadow> get card => [
+        BoxShadow(
+          color: AppTheme.primaryDark.withValues(alpha: 0.06),
+          blurRadius: 24,
+          offset: const Offset(0, 10),
+        ),
+      ];
+
+  static List<BoxShadow> get button => [
+        BoxShadow(
+          color: AppTheme.primary.withValues(alpha: 0.28),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ];
+}
+
+class AppMotion {
+  const AppMotion._();
+
+  static const Duration fast = Duration(milliseconds: 250);
+  static const Duration normal = Duration(milliseconds: 800);
+  static const Duration slow = Duration(milliseconds: 900);
 }
 
 /// Tema unico de la app.
@@ -53,12 +83,20 @@ class AppTheme {
   static const Color warning = Color(0xFFB9770E);
   static const Color warningSoft = Color(0xFFFFF5E6);
   static const Color success = Color(0xFF1E8449);
+  static const Color successSoft = Color(0xFFE6F4EB);
+  static const Color infoSoft = Color(0xFFE8F1FA);
 
   /// Gradiente de marca para encabezados y botones principales.
   static const LinearGradient brandGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [primaryDark, primary, primaryLight],
+  );
+
+  static const LinearGradient softGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [soft, surface],
   );
 
   static const Map<String, Color> classColors = {
@@ -85,14 +123,20 @@ class AppTheme {
 
     final textTheme = base.textTheme.copyWith(
       headlineSmall: base.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.4,
       ),
       titleLarge: base.textTheme.titleLarge?.copyWith(
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w800,
         letterSpacing: -0.3,
       ),
       titleMedium: base.textTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      titleSmall: base.textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      labelLarge: base.textTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.w600,
       ),
     ).apply(bodyColor: onSurface, displayColor: onSurface);
@@ -117,6 +161,7 @@ class AppTheme {
         color: surface,
         elevation: 0,
         margin: EdgeInsets.zero,
+        shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
           side: const BorderSide(color: border),
@@ -158,9 +203,9 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: primary,
-          minimumSize: const Size.fromHeight(50),
+          minimumSize: const Size.fromHeight(54),
           side: const BorderSide(color: border),
-          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadius.md),
           ),
@@ -183,17 +228,21 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
         elevation: 0,
-        height: 68,
+        height: 72,
         indicatorColor: primary.withValues(alpha: 0.12),
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+        ),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return IconThemeData(color: selected ? primary : muted, size: 24);
+          return IconThemeData(color: selected ? primary : muted, size: 22);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return TextStyle(
-            fontSize: 12,
+            fontSize: 11,
+            height: 1.2,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
             color: selected ? primary : muted,
           );

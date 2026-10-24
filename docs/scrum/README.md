@@ -10,12 +10,12 @@ El proyecto tiene dos incertidumbres grandes: **que modelo CNN resulta mejor**
 (OE2) y **si el dataset alcanza** para una comparacion justa (OE1). Ambas solo
 se responden experimentando, no planificando. Cascada obligaria a fijar la
 arquitectura y el modelo antes de saberlo; Scrum permite entregar valor cada
-semana (primero la app con inferencia simulada, luego el modelo real) sin
+semana (primero la app con un mock temporal de inferencia, luego el modelo real) sin
 bloquear al resto del equipo.
 
-La decision clave que habilita todo esto es `MOCK_INFERENCE=true`: el backend
-responde con una prediccion ficticia determinista mientras el modelo se
-entrena, de modo que frontend, API y entrenamiento avanzan **en paralelo**.
+> Nota histórica: `MOCK_INFERENCE=true` existió solo en S4-S7 para avanzar en
+> paralelo mientras se entrenaba. Hoy está eliminado: el backend exige el
+> `best.pt` real y falla en voz alta si falta (ver `backend/app/services/inference.py`).
 
 ## 2. Roles
 
