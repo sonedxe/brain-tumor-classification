@@ -1,0 +1,90 @@
+name: Android Release
+
+# Publica el APK oficial al empujar un tag de version (v1.0.0, v1.0.1, ...).
+# También puede lanzarse a mano desde la pestaña Actions (sin release).
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Flutter 3.41.6
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.41.6"
+          channel: stable
+          cache: true
+
+      - name: Dependencias
+        working-directory: frontend
+        run: flutter pub get
+
+      - name: Analisis y pruebas
+        working-directory: frontend
+        run: |
+          flutter analyze --no-pub
+          flutter test
+
+      - name: Compilar APK
+        working-directory: frontend
+        env:
+          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://brain-tumor-classification-33z3.onrender.com/api/v1' }}
+        run: |
+          echo "API_BASE_URL=$API_BASE_URL"
+          flutter build apk --release --dart-define=API_BASE_URL="$API_BASE_URL"
+          flutter build apk --release --split-per-abi --dart-define=API_BASE_URL="$API_BASE_URL"
+
+      - name: Renombrar artefactos y checksums
+        working-directory: frontend/build/app/outputs/flutter-apk
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ "$GITHUB_REF_TYPE" = "tag" ] || VERSION="dev-${GITHUB_SHA::7}"
+          mv app-release.apk "brain-tumor-classification-${VERSION}-universal.apk"
+          mv app-arm64-v8a-release.apk "brain-tumor-classification-${VERSION}-arm64-v8a.apk"
+          mv app-armeabi-v7a-release.apk "brain-tumor-classification-${VERSION}-armeabi-v7a.apk"
+          mv app-x86_64-release.apk "brain-tumor-classification-${VERSION}-x86_64.apk"
+          sha256sum *.apk > SHA256SUMS.txt
+          ls -lh
+
+      - name: Publicar release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            APK oficial de Clasificación de Tumores Cerebrales (MRI).
+
+            **Instalación en Android**
+            1. Descarga `brain-tumor-classification-<version>-arm64-v8a.apk`
+               (dispositivos modernos) o `-universal.apk` si no estás seguro.
+            2. Permite "Instalar apps de origen desconocido" para tu navegador/gestor.
+            3. Instala el APK. Si ya tenías una versión de prueba instalada,
+               desinstálala primero (la firma puede cambiar).
+
+            **Qué incluye**
+            - Inferencia real contra el backend en Render.
+            - Modo offline con el mismo modelo (ONNX local) y sincronización al reconectar.
+            - Historial, panel de uso y feedback humano.
+
+            Esta compilación usa firma de desarrollo (demo académica), no es apta
+            para Google Play. Verifica la integridad con `SHA256SUMS.txt`.
+          files: |
+            frontend/build/app/outputs/flutter-apk/brain-tumor-classification-*.apk
+            frontend/build/app/outputs/flutter-apk/SHA256SUMS.txt

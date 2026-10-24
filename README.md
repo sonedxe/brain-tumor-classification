@@ -211,6 +211,31 @@ flutter build apk --release \
   --dart-define=API_BASE_URL=https://<tu-backend>.onrender.com/api/v1
 ```
 
+## Descargar el APK oficial
+
+Cada versión se publica automáticamente como **GitHub Release** al empujar un
+tag. El enlace fijo para la última versión es:
+
+```
+https://github.com/sonedxe/brain-tumor-classification/releases/latest
+```
+
+Publicar una versión nueva:
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+El workflow `.github/workflows/android-release.yml` corre análisis y pruebas,
+compila el APK universal y las variantes por ABI, y adjunta los binarios y
+`SHA256SUMS.txt` al release. La URL del backend se toma de la variable de
+repositorio `API_BASE_URL` (Settings → Variables → Actions) o, si no existe, del
+valor por defecto de Render.
+
+> La firma es de desarrollo (demo académica). No es apta para Google Play y
+> puede requerir desinstalar una compilación anterior antes de instalar.
+
 ## Documentación
 
 - `docs/informe-universitario.md` — informe universitario completo del proyecto.
