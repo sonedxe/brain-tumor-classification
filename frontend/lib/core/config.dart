@@ -21,7 +21,9 @@ class AppConfig {
     defaultValue: 'http://10.0.2.2:8000/api/v1',
   );
 
-  static const Duration requestTimeout = Duration(seconds: 30);
+  /// El plan free de Render tarda ~20 s en la primera inferencia (0.1 CPU),
+  /// por lo que el timeout debe cubrir el cold start y la primera pasada.
+  static const Duration requestTimeout = Duration(seconds: 60);
   static const int maxImageBytes = 10 * 1024 * 1024;
   static const String appTitle = 'Clasificacion de tumores cerebrales';
 }
