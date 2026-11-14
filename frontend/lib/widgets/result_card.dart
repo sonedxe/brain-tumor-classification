@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../core/confidence.dart';
 import '../core/theme.dart';
 import '../core/formatting.dart';
 import '../data/models/prediction_model.dart';
 import 'app_states.dart';
+import 'clinical_alert_banner.dart';
+import 'confidence_badge.dart';
 import 'export_pdf_button.dart';
 
 /// Tarjeta con el resultado de la clasificacion.
@@ -29,6 +32,10 @@ class ResultCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (clinicalAlertFor(prediction) != null) ...[
+          ClinicalAlertBanner(prediction: prediction),
+          const SizedBox(height: AppSpacing.lg),
+        ],
         _VerdictCard(prediction: prediction, color: color),
         if (sorted.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
@@ -131,6 +138,7 @@ class _VerdictCard extends StatelessWidget {
                         spacing: AppSpacing.sm,
                         runSpacing: AppSpacing.sm,
                         children: [
+                          ConfidenceBadge(confidence: prediction.confidence),
                           _MetaChip(
                             icon: Icons.speed,
                             text:

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../core/theme.dart';
 import '../viewmodels/prediction_viewmodel.dart';
+import '../widgets/analyzing_card.dart';
 import '../widgets/app_states.dart';
 import '../widgets/image_picker_button.dart';
 import '../widgets/primary_gradient_button.dart';
@@ -59,6 +60,10 @@ class HomeViewContent extends StatelessWidget {
                 busy: viewModel.isBusy,
                 onPressed: viewModel.canClassify ? viewModel.classify : null,
               ),
+              if (viewModel.isBusy) ...[
+                const SizedBox(height: AppSpacing.lg),
+                AnalyzingCard(offline: viewModel.isOffline),
+              ],
               if (viewModel.status == PredictionStatus.error) ...[
                 const SizedBox(height: AppSpacing.lg),
                 _ErrorBanner(message: viewModel.errorMessage ?? ''),

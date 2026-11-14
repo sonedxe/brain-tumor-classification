@@ -14,5 +14,7 @@ class HistoryRepository {
   Future<List<HistoryEntry>> fetch({int limit = 20}) =>
       _apiService.fetchHistory(limit: limit);
 
+  Uri resolveStaticPath(String path) => _apiService.resolveStaticPath(path);
+
   void dispose() => _apiService.dispose();
 }

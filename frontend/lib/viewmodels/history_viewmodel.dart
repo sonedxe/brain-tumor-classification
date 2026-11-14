@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/formatting.dart';
 import '../data/local/local_db.dart';
 import '../data/models/history_entry.dart';
 import '../data/repositories/history_repository.dart';
@@ -7,6 +8,9 @@ import '../data/services/api_service.dart';
 import '../data/services/connectivity_service.dart';
 
 enum HistoryStatus { idle, loading, success, error }
+
+/// Valor del filtro de clase que no excluye nada.
+const String classFilterAll = 'todas';
 
 /// ViewModel del historial (MVVM).
 ///
@@ -40,6 +44,81 @@ class HistoryViewModel extends ChangeNotifier {
   bool get isOffline => _connectivity.isOffline;
 
   int get pendingCount => _entries.where((e) => e.pendingSync).length;
+
+  // --- Busqueda, filtro por clase y orden (solo estado de presentacion) ----
+
+  String _query = '';
+  String _classFilter = classFilterAll;
+  bool _newestFirst = true;
+
+  String get query => _query;
+  String get classFilter => _classFilter;
+  bool get newestFirst => _newestFirst;
+  bool get hasActiveFilters =>
+      _query.trim().isNotEmpty || _classFilter != classFilterAll;
+
+  void setQuery(String value) {
+    _query = value;
+    notifyListeners();
+  }
+
+  void setClassFilter(String value) {
+    _classFilter = value;
+    notifyListeners();
+  }
+
+  void setNewestFirst(bool value) {
+    _newestFirst = value;
+    notifyListeners();
+  }
+
+  void clearFilters() {
+    _query = '';
+    _classFilter = classFilterAll;
+    notifyListeners();
+  }
+
+  int countFor(String filter) => filter == classFilterAll
+      ? _entries.length
+      : _entries.where((e) => e.label == filter).length;
+
+  /// Entradas tras aplicar busqueda, filtro por clase y orden por fecha.
+  List<HistoryEntry> get visibleEntries {
+    final needle = _query.trim().toLowerCase();
+    final result = _entries.where((entry) {
+      if (_classFilter != classFilterAll && entry.label != _classFilter) {
+        return false;
+      }
+      if (needle.isEmpty) {
+        return true;
+      }
+      final haystack = [
+        className(entry.label),
+        entry.label,
+        entry.modelVersion,
+        formatTimestamp(entry.createdAt),
+        '#${entry.id}',
+      ].join(' ').toLowerCase();
+      return haystack.contains(needle);
+    }).toList();
+
+    DateTime stamp(HistoryEntry e) =>
+        DateTime.tryParse(e.createdAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    result.sort(
+      (a, b) =>
+          _newestFirst ? stamp(b).compareTo(stamp(a)) : stamp(a).compareTo(stamp(b)),
+    );
+    return result;
+  }
+
+  /// URL de la miniatura (Grad-CAM) o `null` si la entrada no la tiene.
+  Uri? thumbnailUrl(HistoryEntry entry) {
+    final path = entry.gradcamPath;
+    if (path == null || path.isEmpty) {
+      return null;
+    }
+    return _repository.resolveStaticPath(path);
+  }
 
   Future<void> load({int limit = 20}) async {
     _status = HistoryStatus.loading;

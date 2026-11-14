@@ -14,7 +14,12 @@ class HistoryEntry {
     this.imageHash = '',
     this.pendingSync = false,
     this.localId = '',
+    this.gradcamPath,
   });
+
+  /// Ruta relativa (`/static/gradcam/..`) del mapa Grad-CAM, usada como
+  /// miniatura: el backend no conserva la MRI original por privacidad.
+  final String? gradcamPath;
 
   final int id;
   final String label;
@@ -45,6 +50,7 @@ class HistoryEntry {
       imageHash: json['image_hash'] as String? ?? '',
       pendingSync: json['pending_sync'] as bool? ?? false,
       localId: json['local_id'] as String? ?? '',
+      gradcamPath: json['gradcam_path'] as String?,
     );
   }
 
@@ -58,5 +64,6 @@ class HistoryEntry {
         'image_hash': imageHash,
         'pending_sync': pendingSync,
         'local_id': localId,
+        'gradcam_path': gradcamPath,
       };
 }
