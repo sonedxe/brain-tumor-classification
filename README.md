@@ -248,6 +248,9 @@ valor por defecto de Render.
 - `docs/notas-correccion-paper.md` — desviaciones entre el repositorio y el
   manuscripto, y qué línea del paper corresponde a cada una.
 - `docs/tabla-comparativa.md` — formato de la tabla de resultados del OE2.
+- `docs/mejora-capa-seguridad-clinica.md` — capa de seguridad clínica (triaje
+  por confianza y margen), su justificación, alineación con los ODS y guion de
+  demostración.
 - `docs/flujograma.md` — fases del proyecto y su correspondencia con los
   objetivos específicos.
 - `docs/paper_laccei/figuras/` — figuras del artículo (modelo de datos,
@@ -262,8 +265,11 @@ valor por defecto de Render.
 - **Backend:** contrato estable (`predict`, `history`, `health`, `models`,
   `classes`, `stats`, `auth`) con inferencia real (carga de `best.pt` +
   Grad-CAM), autenticación JWT con sesiones revocables y un modelo de datos de
-  ocho tablas (ver «Modelo de datos»). Los pesos se colocan en `MODEL_PATH`; sin
-  ellos el arranque falla con un mensaje claro.
+  ocho tablas (ver «Modelo de datos»). La respuesta de `predict` incluye una
+  **capa de seguridad clínica** (triaje por confianza y margen top-1/top-2) que
+  marca el resultado como no concluyente y recomienda derivación cuando
+  corresponde. Los pesos se colocan en `MODEL_PATH`; sin ellos el arranque
+  falla con un mensaje claro.
 - **ML:** el pipeline comparativo está listo y los cinco modelos están
   entrenados y evaluados (`ml/evaluation/reports/`). Los `best.pt` ya se
   integraron localmente (excluidos de Git por tamaño) y el backend ejecuta la

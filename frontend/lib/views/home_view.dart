@@ -38,6 +38,8 @@ class HomeViewContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const _HeroCard(),
+              const SizedBox(height: AppSpacing.md),
+              const _ClinicalSafetyBanner(),
               const SizedBox(height: AppSpacing.lg),
               const SectionHeader(
                 icon: Icons.add_photo_alternate_outlined,
@@ -106,13 +108,23 @@ class HomeViewContent extends StatelessWidget {
                   prediction: viewModel.prediction!,
                   gradcamUrl: viewModel.gradcamUrl,
                 ),
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: viewModel.clear,
+                  icon: const Icon(Icons.add_photo_alternate_outlined),
+                  label: const Text('Nueva clasificación'),
+                ),
               ] else if (viewModel.status == PredictionStatus.idle &&
                   viewModel.selectedImage == null) ...[
                 const SizedBox(height: AppSpacing.lg),
                 const _HowItWorks(),
               ],
-              const SizedBox(height: AppSpacing.lg),
-              const AppDisclaimer(),
+              // El resultado ya incluye su propio aviso (ResultCard); se evita
+              // mostrarlo dos veces en la misma pantalla.
+              if (!viewModel.hasResult) ...[
+                const SizedBox(height: AppSpacing.lg),
+                const AppDisclaimer(),
+              ],
             ],
           ),
         );
@@ -263,6 +275,43 @@ class _HowItWorks extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Recordatorio visible de que la app aplica triaje clínico.
+class _ClinicalSafetyBanner extends StatelessWidget {
+  const _ClinicalSafetyBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppTheme.successSoft,
+        borderRadius: BorderRadius.circular(AppRadius.pill),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.verified_user_outlined, size: 16, color: AppTheme.success),
+          SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              'Capa de seguridad clínica activa · los resultados no '
+              'concluyentes se derivan a un especialista.',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: AppTheme.success,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

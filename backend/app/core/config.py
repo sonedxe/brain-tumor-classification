@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     image_size: int = 224
     enable_gradcam: bool = True
 
+    # Capa de seguridad clinica (triaje). Ver app/services/clinical_safety.py.
+    clinical_confidence_threshold: float = 0.70
+    clinical_margin_threshold: float = 0.10
+    clinical_high_confidence_threshold: float = 0.90
+
     @field_validator("model_path", "media_root", mode="after")
     @classmethod
     def _resolve_against_repo_root(cls, value: Path) -> Path:

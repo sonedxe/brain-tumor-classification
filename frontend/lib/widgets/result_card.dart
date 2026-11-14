@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../core/formatting.dart';
 import '../data/models/prediction_model.dart';
+import '../data/services/report_service.dart';
 import 'app_states.dart';
+import 'clinical_safety_card.dart';
+import 'export_report_button.dart';
 
 /// Tarjeta con el resultado de la clasificacion.
 ///
@@ -29,6 +32,16 @@ class ResultCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _VerdictCard(prediction: prediction, color: color),
+        const SizedBox(height: AppSpacing.lg),
+        ClinicalSafetyCard(
+          label: prediction.label,
+          confidence: prediction.confidence,
+          triageLevel: prediction.triageLevel,
+          recommendation: prediction.recommendation,
+          isConclusive: prediction.isConclusive,
+          confidenceThreshold: prediction.confidenceThreshold,
+          topTwoMargin: prediction.topTwoMargin,
+        ),
         if (sorted.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
           _ProbabilitiesCard(entries: sorted),
@@ -37,6 +50,11 @@ class ResultCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.lg),
           _GradCamCard(url: gradcamUrl!),
         ],
+        const SizedBox(height: AppSpacing.lg),
+        ExportReportButton(
+          report: ReportData.fromPrediction(prediction),
+          gradcamUrl: gradcamUrl,
+        ),
         const SizedBox(height: AppSpacing.lg),
         const AppDisclaimer(),
       ],

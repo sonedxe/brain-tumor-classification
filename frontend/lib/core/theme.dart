@@ -109,6 +109,27 @@ class AppTheme {
   static Color classColor(String label) =>
       classColors[label] ?? primary;
 
+  // Triaje clínico (capa de seguridad). Los niveles vienen del backend.
+  static const Map<String, Color> triageColors = {
+    'bajo': success,
+    'medio': warning,
+    'alto': error,
+    'no_concluyente': Color(0xFF5B6B7C),
+  };
+
+  static Color triageColor(String level) =>
+      triageColors[level] ?? triageColors['no_concluyente']!;
+
+  static const Map<String, String> triageLabels = {
+    'bajo': 'Riesgo bajo',
+    'medio': 'Riesgo medio',
+    'alto': 'Riesgo alto',
+    'no_concluyente': 'No concluyente',
+  };
+
+  static String triageLabel(String level) =>
+      triageLabels[level] ?? triageLabels['no_concluyente']!;
+
   static ThemeData build() {
     final base = ThemeData(
       useMaterial3: true,

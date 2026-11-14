@@ -3,8 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../core/formatting.dart';
 import '../core/theme.dart';
+import '../data/services/report_service.dart';
 import '../viewmodels/detail_viewmodel.dart';
 import '../widgets/app_states.dart';
+import '../widgets/clinical_safety_card.dart';
+import '../widgets/export_report_button.dart';
 
 /// Detalle de una predicción del historial + feedback humano.
 ///
@@ -47,6 +50,22 @@ class _PredictionDetailViewState extends State<PredictionDetailView> {
           decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
         ),
         title: Text('#${widget.predictionId} Detalle'),
+        actions: [
+          Consumer<DetailViewModel>(
+            builder: (context, viewModel, _) {
+              final detail = viewModel.detail;
+              if (detail == null) {
+                return const SizedBox.shrink();
+              }
+              return ExportReportButton(
+                compact: true,
+                report: ReportData.fromDetail(detail),
+                gradcamUrl: viewModel.gradcamUrl(detail.gradcamPath),
+                filename: 'reporte-prediccion-${detail.id}.pdf',
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Consumer<DetailViewModel>(
@@ -169,6 +188,22 @@ class _PredictionDetailViewState extends State<PredictionDetailView> {
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ClinicalSafetyCard(
+                  label: detail.label,
+                  confidence: detail.confidence,
+                  triageLevel: detail.triageLevel,
+                  recommendation: detail.recommendation,
+                  isConclusive: detail.isConclusive,
+                  confidenceThreshold: detail.confidenceThreshold,
+                  topTwoMargin: detail.topTwoMargin,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                ExportReportButton(
+                  report: ReportData.fromDetail(detail),
+                  gradcamUrl: gradcamUrl,
+                  filename: 'reporte-prediccion-${detail.id}.pdf',
                 ),
                 const SizedBox(height: AppSpacing.md),
                 AppSectionCard(

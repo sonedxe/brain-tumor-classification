@@ -1,13 +1,12 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/history_entry.dart';
 import '../models/pending_prediction.dart';
+import 'image_store.dart';
 
 /// Cuenta creada sin conexión, pendiente de registrar en el backend.
 class OfflineAccount {
@@ -92,40 +91,34 @@ class QueuedFeedback {
 /// para las imagenes pendientes. El directorio es inyectable para poder probar
 /// la logica sin canales de plataforma.
 class LocalDB {
-  LocalDB({Directory? rootDir, SharedPreferences? preferences})
+  LocalDB({Object? rootDir, SharedPreferences? preferences})
       : _rootDir = rootDir,
-        _prefsOverride = preferences;
+        _prefsOverride = preferences,
+        _imageStore = createImageStore();
 
   static const _historyKey = 'offline_history_cache';
   static const _pendingKey = 'offline_pending_predictions';
   static const _accountsKey = 'offline_accounts';
   static const _feedbackKey = 'offline_feedback_queue';
 
-  final Directory? _rootDir;
+  final Object? _rootDir;
   final SharedPreferences? _prefsOverride;
+  final ImageStore _imageStore;
 
   SharedPreferences? _prefs;
-  Directory? _imageDir;
+  bool _storeReady = false;
 
   Future<void> init() async {
     _prefs ??= _prefsOverride ?? await SharedPreferences.getInstance();
-    if (_imageDir == null) {
-      final root = _rootDir ?? await getApplicationDocumentsDirectory();
-      _imageDir = Directory('${root.path}/offline_images');
-      if (!_imageDir!.existsSync()) {
-        await _imageDir!.create(recursive: true);
-      }
+    if (!_storeReady) {
+      await _imageStore.init(_rootDir);
+      _storeReady = true;
     }
   }
 
   Future<SharedPreferences> get _store async {
     await init();
     return _prefs!;
-  }
-
-  Future<Directory> get _images async {
-    await init();
-    return _imageDir!;
   }
 
   // --- Historial cacheado del backend -------------------------------------
@@ -150,9 +143,8 @@ class LocalDB {
   }
 
   Future<void> addPending(PendingPrediction prediction, Uint8List bytes) async {
-    final dir = await _images;
-    final file = File('${dir.path}/${prediction.localId}.img');
-    await file.writeAsBytes(bytes, flush: true);
+    await init();
+    await _imageStore.writeImage(prediction.localId, bytes);
 
     final pending = await readPending();
     pending.insert(0, prediction);
@@ -184,20 +176,13 @@ class LocalDB {
       _pendingKey,
       jsonEncode(pending.map((e) => e.toJson()).toList()),
     );
-    final dir = await _images;
-    final file = File('${dir.path}/$localId.img');
-    if (file.existsSync()) {
-      await file.delete();
-    }
+    await init();
+    await _imageStore.deleteImage(localId);
   }
 
   Future<Uint8List?> readPendingImage(String localId) async {
-    final dir = await _images;
-    final file = File('${dir.path}/$localId.img');
-    if (!file.existsSync()) {
-      return null;
-    }
-    return file.readAsBytes();
+    await init();
+    return _imageStore.readImage(localId);
   }
 
   // --- Feedback en cola ---------------------------------------------------

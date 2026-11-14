@@ -15,10 +15,14 @@ dependencies:
   crypto: ^3.0.5
   cupertino_icons: ^1.0.8
   http: ^1.2.2
-  image: ^4.3.0
+  # Fijado <4.11.0: image 4.11+ usa archive.decodeLazy, que no existe en
+  # archive 4.0.x (pdf 3.12 aún limita archive a <4.1.0).
+  image: ">=4.3.0 <4.11.0"
   image_picker: ^1.1.2
   onnxruntime: ^1.4.1
   path_provider: ^2.1.4
+  pdf: ^3.12.0
+  printing: ^5.14.3
   provider: ^6.1.2
   shared_preferences: ^2.3.2
 

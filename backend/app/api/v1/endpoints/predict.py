@@ -22,6 +22,7 @@ from app.models.user import User
 from app.repositories import catalog as catalog_repo
 from app.repositories import predictions as predictions_repo
 from app.schemas.prediction import PredictionResponse
+from app.services.clinical_safety import assess
 from app.services.inference import InferenceService
 from app.utils.image import load_rgb_image, read_image_meta
 from app.utils.validation import InvalidImageError, ensure_valid_image
@@ -61,6 +62,17 @@ async def predict(
     started = time.perf_counter()
     result = service.predict(image)
     inference_ms = (time.perf_counter() - started) * 1000.0
+
+    # Capa de seguridad clinica: decide si el resultado es concluyente y que
+    # nivel de triaje/recomendacion corresponde. No altera el contrato basico.
+    assessment = assess(
+        result["label"],
+        result["confidence"],
+        result["probabilities"],
+        confidence_threshold=settings.clinical_confidence_threshold,
+        margin_threshold=settings.clinical_margin_threshold,
+        high_confidence_threshold=settings.clinical_high_confidence_threshold,
+    )
 
     # Persistencia enriquecida: imagen (dedup) + modelo + clase + probabilidades.
     db_image = catalog_repo.get_or_create_image(
@@ -114,4 +126,9 @@ async def predict(
         gradcam_path=result.get("gradcam_path"),
         model_version=model.version,
         inference_ms=inference_ms,
+        is_conclusive=assessment.is_conclusive,
+        triage_level=assessment.triage_level,
+        recommendation=assessment.recommendation,
+        confidence_threshold=assessment.confidence_threshold,
+        top_two_margin=assessment.top_two_margin,
     )

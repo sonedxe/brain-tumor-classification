@@ -31,6 +31,42 @@ def test_predict_returns_the_documented_contract(client, sample_image_bytes):
     assert "model_version" in body
     assert "gradcam_path" in body
 
+    # Capa de seguridad clinica (nueva) coherente con la prediccion.
+    assert isinstance(body["is_conclusive"], bool)
+    assert body["triage_level"] in {"bajo", "medio", "alto", "no_concluyente"}
+    assert body["recommendation"]
+    assert body["confidence_threshold"] == 0.70
+    assert 0.0 <= body["top_two_margin"] <= 1.0
+
+
+def test_predict_marks_low_confidence_as_inconclusive(client, sample_image_bytes):
+    """Con pesos aleatorios la confianza es baja: la capa de seguridad debe
+    marcar el resultado como no concluyente en lugar de forzar un diagnostico."""
+    body = client.post(
+        "/api/v1/predict", files={"file": ("mri.png", sample_image_bytes, "image/png")}
+    ).json()
+
+    if body["confidence"] < body["confidence_threshold"]:
+        assert body["is_conclusive"] is False
+        assert body["triage_level"] == "no_concluyente"
+        assert "no concluyente" in body["recommendation"].lower()
+
+
+def test_prediction_detail_includes_clinical_assessment(client, sample_image_bytes):
+    created = client.post(
+        "/api/v1/predict", files={"file": ("mri.png", sample_image_bytes, "image/png")}
+    ).json()
+    prediction_id = client.get("/api/v1/history").json()[0]["id"]
+
+    detail = client.get(f"/api/v1/predictions/{prediction_id}").json()
+
+    assert "is_conclusive" in detail
+    assert detail["triage_level"] in {"bajo", "medio", "alto", "no_concluyente"}
+    assert detail["recommendation"]
+    assert detail["top_two_margin"] >= 0.0
+    # El detalle recalcula lo mismo que devolvio /predict.
+    assert detail["triage_level"] == created["triage_level"]
+
 
 def test_predict_is_deterministic(client, sample_image_bytes):
     first = client.post(
