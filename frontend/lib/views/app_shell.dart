@@ -8,6 +8,7 @@ import 'auth_view.dart';
 import 'history_view.dart';
 import 'home_view.dart';
 import 'info_view.dart';
+import 'notification_settings_view.dart';
 import 'stats_view.dart';
 
 /// Shell con navegacion inferior: de 1 pantalla a 4 sin cambiar la estetica.
@@ -65,6 +66,15 @@ class _AppShellState extends State<AppShell> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Notificaciones',
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const NotificationSettingsView(),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: AppSpacing.lg),
             child: _StatusDot(loggedIn: loggedIn),

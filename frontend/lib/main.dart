@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import 'core/theme.dart';
 import 'data/local/local_db.dart';
 import 'data/services/connectivity_service.dart';
+import 'data/services/notification_service.dart';
 import 'data/services/offline_service.dart';
 import 'data/services/sync_service.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/detail_viewmodel.dart';
 import 'viewmodels/history_viewmodel.dart';
+import 'viewmodels/notification_viewmodel.dart';
 import 'viewmodels/prediction_viewmodel.dart';
 import 'viewmodels/stats_viewmodel.dart';
 import 'views/app_shell.dart';
@@ -22,6 +24,13 @@ Future<void> main() async {
   final db = LocalDB();
   await db.init();
 
+  final notifications = NotificationService();
+  try {
+    await notifications.init();
+  } on Exception catch (error) {
+    debugPrint('Notificaciones no disponibles: $error');
+  }
+
   final syncService = SyncService(db: db);
   syncService.attach(connectivity);
   // Si arrancamos online, vaciamos lo que quedó pendiente de la sesión previa.
@@ -32,6 +41,7 @@ Future<void> main() async {
       db: db,
       connectivity: connectivity,
       syncService: syncService,
+      notifications: notifications,
     ),
   );
 }
@@ -47,11 +57,13 @@ class BrainTumorApp extends StatelessWidget {
     required this.db,
     required this.connectivity,
     required this.syncService,
+    required this.notifications,
   });
 
   final LocalDB db;
   final ConnectivityService connectivity;
   final SyncService syncService;
+  final NotificationService notifications;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +73,11 @@ class BrainTumorApp extends StatelessWidget {
           create: (_) => PredictionViewModel(
             offlineService: OfflineService(db: db),
             connectivity: connectivity,
+            notifications: notifications,
           ),
+        ),
+        ChangeNotifierProvider<NotificationViewModel>(
+          create: (_) => NotificationViewModel(service: notifications)..load(),
         ),
         ChangeNotifierProvider<AuthViewModel>(
           create: (_) => AuthViewModel(db: db, connectivity: connectivity)

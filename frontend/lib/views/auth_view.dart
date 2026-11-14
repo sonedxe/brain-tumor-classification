@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../widgets/primary_gradient_button.dart';
+import 'notification_settings_view.dart';
 
 /// Pantalla de cuenta: login / registro en una sola vista (camino opcional).
 ///
@@ -98,6 +99,16 @@ class _SignedIn extends StatelessWidget {
               style: TextStyle(color: AppTheme.muted),
             ),
             const SizedBox(height: AppSpacing.xl),
+            OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsView(),
+                ),
+              ),
+              icon: const Icon(Icons.notifications_outlined),
+              label: const Text('Notificaciones'),
+            ),
+            const SizedBox(height: AppSpacing.sm),
             OutlinedButton.icon(
               onPressed: auth.logout,
               icon: const Icon(Icons.logout),

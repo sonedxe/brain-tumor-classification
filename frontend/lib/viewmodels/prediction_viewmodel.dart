@@ -5,6 +5,7 @@ import '../data/models/prediction_model.dart';
 import '../data/repositories/prediction_repository.dart';
 import '../data/services/api_service.dart';
 import '../data/services/connectivity_service.dart';
+import '../data/services/notification_service.dart';
 import '../data/services/offline_service.dart';
 
 enum PredictionStatus { idle, loading, success, error }
@@ -22,14 +23,17 @@ class PredictionViewModel extends ChangeNotifier {
     PredictionRepository? repository,
     OfflineService? offlineService,
     ConnectivityService? connectivity,
+    NotificationService? notifications,
   })  : _repository = repository ?? PredictionRepository(),
         _offlineService = offlineService,
+        _notifications = notifications,
         _connectivity = connectivity ?? ConnectivityService.instance {
     _connectivity.addListener(notifyListeners);
   }
 
   final PredictionRepository _repository;
   final OfflineService? _offlineService;
+  final NotificationService? _notifications;
   final ConnectivityService _connectivity;
   final ImagePicker _picker = ImagePicker();
 
@@ -119,6 +123,7 @@ class PredictionViewModel extends ChangeNotifier {
       _prediction = await _repository.classify(image);
       _usedOffline = false;
       _status = PredictionStatus.success;
+      _notifyCompleted();
     } on ApiException catch (error) {
       if (error.isNetwork && _offlineService != null) {
         await _classifyOffline(image);
@@ -140,6 +145,7 @@ class PredictionViewModel extends ChangeNotifier {
       _prediction = await _offlineService.classify(image);
       _usedOffline = true;
       _status = PredictionStatus.success;
+      _notifyCompleted();
     } on OfflineException catch (error) {
       _fail(error.message);
     } on UnsupportedError catch (error) {
@@ -148,6 +154,14 @@ class PredictionViewModel extends ChangeNotifier {
       _fail('No se pudo clasificar sin conexión: $error');
     }
     notifyListeners();
+  }
+
+  /// Dispara la notificacion local de analisis completado (sin esperar).
+  void _notifyCompleted() {
+    final prediction = _prediction;
+    if (prediction != null) {
+      _notifications?.showAnalysisComplete(prediction);
+    }
   }
 
   void clear() {
