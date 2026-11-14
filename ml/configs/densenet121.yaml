@@ -1,0 +1,39 @@
+model: densenet121
+torchvision_name: densenet121
+pretrained: true
+role: candidato
+
+input:
+  size: 224
+  layout: NCHW
+  channels: 3
+
+normalization:
+  mode: imagenet
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+
+augmentation:
+  horizontal_flip: 0.5
+  rotation_degrees: 10
+
+head:
+  num_classes: 4
+
+training:
+  loss: cross_entropy
+  batch_size: 64
+  epochs: 100
+  optimizer: adam
+  learning_rate: 0.001
+
+transfer:
+  freeze_backbone: true
+
+validation:
+  strategy: holdout
+  seed: 42
+
+gradcam:
+  target_layer: features.denseblock4
+  method: gradcam

@@ -1,0 +1,62 @@
+{
+  "mobilenetv3": {
+    "accuracy": 0.90125,
+    "macro_precision": 0.9037346518514888,
+    "macro_recall": 0.90125,
+    "macro_f1": 0.8991088955874595,
+    "roc_auc_macro_ovr": 0.9759494791666666,
+    "tumor_recall": 0.8691666666666666,
+    "ms_per_image": 0.20886875000769578,
+    "num_parameters_m": 4.207,
+    "checkpoint_mb": 16.245,
+    "best_val_accuracy": 0.9375
+  },
+  "efficientnetb0": {
+    "accuracy": 0.910625,
+    "macro_precision": 0.9156913384152622,
+    "macro_recall": 0.910625,
+    "macro_f1": 0.9080141285975382,
+    "roc_auc_macro_ovr": 0.9801739583333334,
+    "tumor_recall": 0.8816666666666667,
+    "ms_per_image": 0.36586848959056323,
+    "num_parameters_m": 4.013,
+    "checkpoint_mb": 15.592,
+    "best_val_accuracy": 0.9455357142857143
+  },
+  "shufflenetv2": {
+    "accuracy": 0.856875,
+    "macro_precision": 0.8621090813727025,
+    "macro_recall": 0.856875,
+    "macro_f1": 0.8540947028740933,
+    "roc_auc_macro_ovr": 0.9647151041666667,
+    "tumor_recall": 0.8116666666666666,
+    "ms_per_image": 0.10289713541548433,
+    "num_parameters_m": 1.258,
+    "checkpoint_mb": 4.963,
+    "best_val_accuracy": 0.9098214285714286
+  },
+  "resnet18": {
+    "accuracy": 0.863125,
+    "macro_precision": 0.8685186975980381,
+    "macro_recall": 0.863125,
+    "macro_f1": 0.8602584642512099,
+    "roc_auc_macro_ovr": 0.9633052083333333,
+    "tumor_recall": 0.8191666666666667,
+    "ms_per_image": 0.24335651041459036,
+    "num_parameters_m": 11.179,
+    "checkpoint_mb": 42.718,
+    "best_val_accuracy": 0.9098214285714286
+  },
+  "densenet121": {
+    "accuracy": 0.8825,
+    "macro_precision": 0.887236743439228,
+    "macro_recall": 0.8825000000000001,
+    "macro_f1": 0.8802087842336382,
+    "roc_auc_macro_ovr": 0.9705166666666667,
+    "tumor_recall": 0.8458333333333333,
+    "ms_per_image": 0.9688289062334358,
+    "num_parameters_m": 6.958,
+    "checkpoint_mb": 27.119,
+    "best_val_accuracy": 0.9178571428571428
+  }
+}

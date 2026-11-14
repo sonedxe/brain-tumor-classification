@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "run_id": "20261024T093636Z-429ce5c1",
+  "evaluated_at": "2026-10-24T09:37:10.044104+00:00",
+  "model": "mobilenetv3",
+  "architecture": "mobilenetv3",
+  "checkpoint_path": "ml/models/mobilenetv3/best.pt",
+  "checkpoint_sha256": "a0650f3b3afb46d841291df3388df0f71030bfd3eba3a0cfe957bbd53c9e1f47",
+  "split": "test",
+  "data_root": "ml/data/processed",
+  "n_samples": 1600,
+  "classes": [
+    "glioma",
+    "meningioma",
+    "pituitario",
+    "no_tumor"
+  ],
+  "class_to_idx": {
+    "glioma": 0,
+    "meningioma": 1,
+    "pituitario": 2,
+    "no_tumor": 3
+  },
+  "preprocessing": {
+    "input_size": 224,
+    "normalization": {
+      "mode": "imagenet",
+      "mean": [
+        0.485,
+        0.456,
+        0.406
+      ],
+      "std": [
+        0.229,
+        0.224,
+        0.225
+      ]
+    },
+    "transforms": [
+      {
+        "name": "RGB",
+        "source": "torchvision.datasets.ImageFolder PIL loader"
+      },
+      {
+        "name": "Resize",
+        "size": [
+          224,
+          224
+        ],
+        "interpolation": "bilinear (torchvision default)"
+      },
+      {
+        "name": "ToTensor",
+        "scale": "uint8 [0,255] to float [0,1]"
+      },
+      {
+        "name": "Normalize",
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ]
+      }
+    ]
+  },
+  "versions": {
+    "python": "3.12.4",
+    "torch": "2.14.1+cu130",
+    "torchvision": "0.29.1+cu130",
+    "scikit_learn": "1.5.2",
+    "Pillow": "11.0.0"
+  },
+  "manifest": {
+    "status": "verified",
+    "manifest_path": "splits.json",
+    "manifest_sha256": "762a07ba8d625d59773fa5d7b99921f81115157de21d882440084523ac284adf",
+    "split_fingerprint": "b8ae9d5cb5d2dfff92a9d43abbf0552ee9d4eca297d0ac532a4174f026d86378",
+    "split_fingerprint_scope": "SHA-256 de las asignaciones split/ruta relativa de origen; no incluye el contenido binario de las imágenes.",
+    "n_samples": 1600,
+    "counts_by_class": {
+      "glioma": 400,
+      "meningioma": 400,
+      "pituitario": 400,
+      "no_tumor": 400
+    },
+    "path_comparison": "manifest source paths mapped to processed/test paths; image bytes not hashed"
+  },
+  "test_set_caveat": "Evaluacion comparativa actualizada: Testing ya intervino en la seleccion previa de arquitectura y no es una prueba final independiente.",
+  "accuracy": 0.90125,
+  "macro_precision": 0.9037346518514888,
+  "macro_recall": 0.90125,
+  "macro_f1": 0.8991088955874595,
+  "weighted_f1": 0.8991088955874597,
+  "tumor_recall": 0.8691666666666666,
+  "confusion_matrix": [
+    [
+      299,
+      59,
+      7,
+      35
+    ],
+    [
+      22,
+      356,
+      10,
+      12
+    ],
+    [
+      1,
+      11,
+      388,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      399
+    ]
+  ],
+  "confusion_matrix_classes": [
+    "glioma",
+    "meningioma",
+    "pituitario",
+    "no_tumor"
+  ],
+  "per_class": {
+    "glioma": {
+      "precision": 0.9285714285714286,
+      "recall": 0.7475,
+      "f1-score": 0.8282548476454293,
+      "support": 400
+    },
+    "meningioma": {
+      "precision": 0.8337236533957846,
+      "recall": 0.89,
+      "f1-score": 0.8609431680773881,
+      "support": 400
+    },
+    "pituitario": {
+      "precision": 0.9580246913580247,
+      "recall": 0.97,
+      "f1-score": 0.9639751552795031,
+      "support": 400
+    },
+    "no_tumor": {
+      "precision": 0.8946188340807175,
+      "recall": 0.9975,
+      "f1-score": 0.9432624113475178,
+      "support": 400
+    },
+    "accuracy": 0.90125,
+    "macro avg": {
+      "precision": 0.9037346518514888,
+      "recall": 0.90125,
+      "f1-score": 0.8991088955874595,
+      "support": 1600
+    },
+    "weighted avg": {
+      "precision": 0.9037346518514888,
+      "recall": 0.90125,
+      "f1-score": 0.8991088955874597,
+      "support": 1600
+    }
+  },
+  "roc_auc_macro_ovr": 0.9759494791666666,
+  "roc_auc_per_class": {
+    "glioma": 0.9337270833333332,
+    "meningioma": 0.9754145833333333,
+    "pituitario": 0.9983354166666667,
+    "no_tumor": 0.9963208333333334
+  },
+  "undefined_metric_reasons": {},
+  "macro_aggregation_note": "promedio sobre clases con valor definido; weighted usa soporte verdadero",
+  "loss": 0.4124569991906742,
+  "best_val_accuracy": 0.9375,
+  "checkpoint_epoch": 91,
+  "ms_per_image": 0.20886875000769578,
+  "num_parameters": 4207156,
+  "num_parameters_m": 4.207,
+  "checkpoint_mb": 16.245
+}
