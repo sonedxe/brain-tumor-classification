@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../data/local/local_db.dart';
 import '../data/services/auth_service.dart';
+import '../data/services/api_service.dart';
 import '../data/services/connectivity_service.dart';
 import '../data/services/session_store.dart';
 
@@ -35,6 +36,10 @@ class AuthViewModel extends ChangeNotifier {
   bool _offlineSession = false;
 
   String? get token => _token;
+
+  /// Token apto para el backend: las sesiones offline no tienen JWT real.
+  String? get _bearer =>
+      (_token == null || _token!.startsWith('offline:')) ? null : _token;
   String? get userName => _userName;
   String? get error => _error;
   bool get busy => _busy;
@@ -49,6 +54,7 @@ class AuthViewModel extends ChangeNotifier {
       return;
     }
     _token = token;
+    ApiService.bearerToken = _bearer;
     _userName = await _store.readName();
     _offlineSession = token.startsWith('offline:');
     notifyListeners();
@@ -84,6 +90,7 @@ class AuthViewModel extends ChangeNotifier {
           ? await _service.register(name ?? '', email, password)
           : await _service.login(email, password);
       _token = data['access_token'] as String?;
+      ApiService.bearerToken = _bearer;
       _userName = data['name'] as String? ?? email;
       _offlineSession = false;
       _isRegisterMode = false;
@@ -137,6 +144,8 @@ class AuthViewModel extends ChangeNotifier {
     }
 
     _token = 'offline:$email';
+
+    ApiService.bearerToken = _bearer;
     _userName = account?.name ?? (name ?? email);
     _offlineSession = true;
     await _store.save(token: _token!, name: _userName ?? email);
@@ -145,6 +154,7 @@ class AuthViewModel extends ChangeNotifier {
 
   Future<void> logout() async {
     _token = null;
+    ApiService.bearerToken = _bearer;
     _userName = null;
     _error = null;
     _offlineSession = false;

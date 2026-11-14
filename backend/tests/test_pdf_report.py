@@ -72,3 +72,15 @@ def test_unknown_prediction_is_404(client):
 
 def test_requires_authentication(client):
     assert client.get("/api/v1/predictions/1/report.pdf").status_code in (401, 403)
+
+
+def test_predict_response_exposes_the_prediction_id(client, sample_image_bytes):
+    token = _token(client, "a@unmsm.edu.pe")
+
+    body = client.post(
+        "/api/v1/predict",
+        files={"file": ("mri.png", sample_image_bytes, "image/png")},
+        headers=_auth(token),
+    ).json()
+
+    assert body["id"] == client.get("/api/v1/history").json()[0]["id"]

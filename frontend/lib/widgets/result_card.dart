@@ -4,6 +4,7 @@ import '../core/theme.dart';
 import '../core/formatting.dart';
 import '../data/models/prediction_model.dart';
 import 'app_states.dart';
+import 'export_pdf_button.dart';
 
 /// Tarjeta con el resultado de la clasificacion.
 ///
@@ -36,6 +37,10 @@ class ResultCard extends StatelessWidget {
         if (gradcamUrl != null) ...[
           const SizedBox(height: AppSpacing.lg),
           _GradCamCard(url: gradcamUrl!),
+        ],
+        if (prediction.id != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          ExportPdfButton(predictionId: prediction.id!),
         ],
         const SizedBox(height: AppSpacing.lg),
         const AppDisclaimer(),

@@ -12,8 +12,11 @@ class PredictionModel {
     required this.modelVersion,
     required this.inferenceMs,
     this.gradcamPath,
+    this.id,
   });
 
+  /// Id de la prediccion en el backend (nulo si se calculo sin conexion).
+  final int? id;
   final String label;
   final double confidence;
   final Map<String, double> probabilities;
@@ -35,6 +38,7 @@ class PredictionModel {
     });
 
     return PredictionModel(
+      id: (json['id'] as num?)?.toInt(),
       label: json['label'] as String? ?? 'desconocido',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
       probabilities: probabilities,
@@ -45,6 +49,7 @@ class PredictionModel {
   }
 
   Map<String, dynamic> toJson() => {
+        if (id != null) 'id': id,
         'label': label,
         'confidence': confidence,
         'probabilities': probabilities,

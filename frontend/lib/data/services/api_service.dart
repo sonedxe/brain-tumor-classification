@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart' show XFile;
@@ -36,6 +37,15 @@ class ApiService {
 
   final http.Client _client;
   final String _baseUrl;
+
+  /// Token JWT de la sesion activa (lo fija `AuthViewModel`). Si es nulo, las
+  /// peticiones salen anonimas, como antes.
+  static String? bearerToken;
+
+  Map<String, String> get _authHeaders {
+    final token = bearerToken;
+    return token == null ? const {} : {'Authorization': 'Bearer $token'};
+  }
 
   String get baseUrl => _baseUrl;
 
@@ -149,6 +159,7 @@ class ApiService {
 
     try {
       final request = http.MultipartRequest('POST', _endpoint('predict'))
+        ..headers.addAll(_authHeaders)
         ..files.add(
           http.MultipartFile.fromBytes('file', bytes, filename: image.name),
         )
@@ -163,6 +174,54 @@ class ApiService {
       throw const ApiException(
         'No hay conexion con el servidor. Verifica que el backend este '
         'corriendo y que API_BASE_URL apunte a el.',
+        isNetwork: true,
+      );
+    } on TimeoutException {
+      throw const ApiException(
+        'El servidor tardo demasiado en responder',
+        isNetwork: true,
+      );
+    }
+  }
+
+  /// `GET /predictions/{id}/report.pdf` — informe clinico (solo el propietario).
+  Future<Uint8List> fetchReportPdf(int predictionId) async {
+    if (bearerToken == null) {
+      throw const ApiException(
+        'Inicia sesion en la pestana Cuenta para exportar el informe PDF.',
+        statusCode: 401,
+      );
+    }
+    try {
+      final response = await _client
+          .get(
+            _endpoint('predictions/$predictionId/report.pdf'),
+            headers: _authHeaders,
+          )
+          .timeout(AppConfig.requestTimeout);
+      if (response.statusCode == 200) {
+        return response.bodyBytes;
+      }
+      if (response.statusCode == 403) {
+        throw const ApiException(
+          'Este informe solo esta disponible para el usuario que realizo el '
+          'analisis.',
+          statusCode: 403,
+        );
+      }
+      if (response.statusCode == 401) {
+        throw const ApiException(
+          'Tu sesion expiro. Vuelve a iniciar sesion.',
+          statusCode: 401,
+        );
+      }
+      throw ApiException(
+        _extractDetail(response) ?? 'Error ${response.statusCode}',
+        statusCode: response.statusCode,
+      );
+    } on http.ClientException {
+      throw const ApiException(
+        'No hay conexion con el servidor. Verifica tu red e intenta de nuevo.',
         isNetwork: true,
       );
     } on TimeoutException {

@@ -31,6 +31,7 @@ class PredictionResponse(BaseModel):
         }
     )
 
+    id: int | None = None
     label: str
     confidence: float = Field(ge=0.0, le=1.0)
     probabilities: dict[str, float]

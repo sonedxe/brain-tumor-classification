@@ -94,7 +94,7 @@ async def predict(
         if code in classes_by_code
     ]
 
-    predictions_repo.create_prediction(
+    record = predictions_repo.create_prediction(
         db,
         image=db_image,
         model=model,
@@ -108,6 +108,7 @@ async def predict(
     )
 
     return PredictionResponse(
+        id=record.id,
         label=result["label"],
         confidence=result["confidence"],
         probabilities=result["probabilities"],
