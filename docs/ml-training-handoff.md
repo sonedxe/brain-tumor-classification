@@ -168,14 +168,18 @@ checkpoint previo de ese modelo. Para evaluar manualmente un modelo:
 python ml/evaluation/metrics.py --model resnet18 --weights ml/models/resnet18/best.pt
 ```
 
-El comando manual se detiene si ya existe `resnet18_metrics.json`; usa
-`--overwrite-report` solo si deseas reemplazarlo. `run_all.py` pasa un directorio
-de salida único por ejecución y guarda allí los informes y `comparison.json`.
+Cada evaluacion manual crea un directorio de corrida unico bajo
+ml/evaluation/reports/runs/; los informes y predicciones no reemplazan resultados anteriores.
+run_all.py comparte el mismo identificador entre todos los modelos de la corrida.
+comparison.json conserva el esquema existente por modelo.
 
-Guarda un JSON por arquitectura en `ml/evaluation/reports/` con accuracy,
-precision/recall/F1 macro y weighted, matriz de confusion, reporte por clase,
-ROC-AUC multiclase one-vs-rest macro y AUC por clase cuando se puedan calcular.
-El test solo se usa en esta evaluacion final, nunca para escoger la epoca.
+Cada modelo guarda un JSON de metricas y otro de predicciones por ejemplo. Los informes
+registran hashes del checkpoint y del manifiesto, split_fingerprint, preprocesamiento,
+versiones disponibles y el resultado de cotejar las rutas de test. Anade --require-manifest
+para detenerse si splits.json no esta disponible o no coincide. Se calculan accuracy, loss,
+metricas multiclase, matriz de confusion y AUC OVR cuando estan definidas. El checkpoint se
+selecciona por validation; test ya intervino en la seleccion previa de arquitectura, por lo
+que las nuevas cifras son una comparacion actualizada, no una prueba final independiente.
 
 ## 9. Grad-CAM
 
@@ -198,7 +202,8 @@ solo. Guarda el PNG y muestra la clase predicha.
 ml/models/<modelo>/best.pt                 checkpoint elegido por val_accuracy
 ml/models/<modelo>/history.json            historial train/validacion
 ml/models/<modelo>/metadata.json           arquitectura, clases, preproceso y checkpoint
-ml/evaluation/reports/runs/<run-id>/<modelo>_metrics.json metricas y matriz
+ml/evaluation/reports/runs/<run-id>/<modelo>_metrics.json metricas y trazabilidad
+ml/evaluation/reports/runs/<run-id>/<modelo>_predictions.json predicciones y probabilidades
 ml/evaluation/reports/runs/<run-id>/comparison.json      resumen de esta ejecucion
 ml/data/processed/splits.json              archivos y huella de la particion
 ```
