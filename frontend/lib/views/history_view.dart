@@ -119,7 +119,7 @@ class _HistoryBodyState extends State<_HistoryBody> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _filters.length,
-            separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
             itemBuilder: (context, index) {
               final filter = _filters[index];
               return _FilterChip(
@@ -422,7 +422,7 @@ class _Thumbnail extends StatelessWidget {
             : Image.network(
                 url.toString(),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => fallback,
+                errorBuilder: (_, _, _) => fallback,
                 loadingBuilder: (context, child, progress) =>
                     progress == null ? child : fallback,
               ),
